@@ -1,0 +1,188 @@
+- name: noop
+  input: |
+    console.log("This is a test");
+  expected: |
+    console.log("This is a test");
+
+- name: noop-local-variable
+  input: |
+    let fs = { readFile: () => {} };
+    fs.readFile();
+  expected: |
+    let fs = { readFile: () => {} };
+    fs.readFile();
+
+- name: noop-existing-require
+  input: |
+    const fs = require("fs");
+    fs.readFile();
+  expected: |
+    const fs = require("fs");
+    fs.readFile();
+
+- name: prepend
+  input: |
+    fs.readFile();
+  expected: |
+    const fs = require("fs");
+
+    fs.readFile();
+
+- name: prepend-quote
+  input: |
+    fs.readFile('example.txt');
+  expected: |
+    const fs = require('fs');
+
+    fs.readFile('example.txt');
+
+- name: prepend-no-semicolon
+  input: |
+    fs.readFile()
+  expected: |
+    const fs = require("fs")
+
+    fs.readFile()
+
+# TODO: eslintrc tests for crypto
+
+- name: prepend-kind
+  input: |
+    let filename = "example.txt";
+    fs.readFile(filename);
+  expected: |
+    let fs = require("fs");
+
+    let filename = "example.txt";
+    fs.readFile(filename);
+
+- name: prepend-all
+  input: |
+    var path = '/tmp/example.txt'
+    fs.readFile(path)
+
+  expected: |
+    var fs = require('fs')
+
+    var path = '/tmp/example.txt'
+    fs.readFile(path)
+
+- name: append
+  input: |
+    const fs = require("fs");
+
+    fs.readFile();
+    util.inspect({});
+  expected: |
+    const fs = require("fs");
+    const util = require("util");
+
+    fs.readFile();
+    util.inspect({});
+
+- name: append-quote
+  input: |
+    const fs = require('fs');
+
+    fs.readFile();
+    util.inspect({});
+  expected: |
+    const fs = require('fs');
+    const util = require('util');
+
+    fs.readFile();
+    util.inspect({});
+
+- name: append-no-semicolon
+  input: |
+    const fs = require("fs")
+
+    fs.readFile()
+    util.inspect({})
+  expected: |
+    const fs = require("fs")
+    const util = require("util")
+
+    fs.readFile()
+    util.inspect({})
+
+- name: append-kind
+  input: |
+    let fs = require("fs");
+
+    fs.readFile();
+    util.inspect({});
+  expected: |
+    let fs = require("fs");
+    let util = require("util");
+
+    fs.readFile();
+    util.inspect({});
+
+- name: append-all
+  input: |
+    var fs = require('fs')
+
+    fs.readFile()
+    util.inspect({})
+  expected: |
+    var fs = require('fs')
+    var util = require('util')
+
+    fs.readFile()
+    util.inspect({})
+
+- name: remove
+  input: |
+    const fs = require("fs")
+    console.log("Hello")
+  expected: |
+    console.log("Hello")
+
+- name: remove-empty
+  input: |
+    const fs = require("fs")
+  expected: "\n"
+
+- name: remove-only-requires
+  input: |
+    const fs = require("fs")
+    const x = 3
+  expected: |
+    const x = 3
+
+- name: remove-multiple
+  input: |
+    const fs = require("fs")
+    const util = require("util")
+    const http = require("http")
+
+    util.inspect({})
+  expected: |
+    const util = require("util")
+
+    util.inspect({})
+
+- name: dont-remove-multiple-declarators
+  input: |
+    const fs = require("fs"), util = require("util")
+
+    fs.readFile()
+  expected: |
+    const fs = require("fs"), util = require("util")
+
+    fs.readFile()
+
+- name: remove-and-append
+  input: |
+    const fs = require("fs")
+    const util = require("util")
+
+    util.inspect({})
+    http.createServer()
+  expected: |
+    const util = require("util")
+    const http = require("http")
+
+    util.inspect({})
+    http.createServer()
