@@ -9,8 +9,8 @@ exports.run = code => {
   const idents = findMissingIdents(violations);
 
   const reqs = findRequires(sourceCode);
-  const ranges = findRangesToRemove(reqs, violations);
-  return rewriteCode(sourceCode, reqs, idents, ranges);
+  const linesToRemove = findLinesToRemove(sourceCode, reqs, violations);
+  return rewriteCode(sourceCode, reqs, idents, linesToRemove);
 };
 
 function lint(code) {
@@ -77,112 +77,80 @@ function findRequires(sourceCode) {
     .filter(d => d.declarators.length > 0);
 }
 
-function findRangesToRemove(reqs, violations) {
-  const unused = violations;
-  const locs = unused.reduce(
-    (locs, v) => {
-      if (!locs[v.line]) {
-        locs[v.line] = [];
-      }
-      locs[v.line].push(v.column);
-      return locs;
-    },
-    {}
-  );
+function findLinesToRemove(sourceCode, reqs, violations) {
+  // line numbers are 1-indexed, so add a blank line to make indexing easy
+  const sourceByLine = sourceCode.lines.slice(0);
+  sourceByLine.unshift("");
 
-  // Multiple variable declarations like const x = require(), y = require() are
-  // significantly more difficult to remove due to the commas. For simplicitly,
-  // we ignore those cases. More generally, it makes sense for us to only remove
-  // require()s we have added, and all require()s that we add are single
-  // variable declarations.
+  const unused = {};
+  violations
+    .filter(v => v.ruleId === "no-unused-vars")
+    .forEach(v => unused[v.line] = true);
+
   return reqs
+    // Multiple variable declarations like const x = require(), y = require()
+    // are significantly more difficult to remove due to the commas. For
+    // simplicitly, we ignore those cases. More generally, it makes sense for
+    // us to only remove require()s we have added, and all require()s that we
+    // add are single variable declarations.
     .filter(r => r.declarators.length === 1)
-    .map(r => {
-      let remove = false;
+    // Limit to declarations that occupy entire lines. If there are other
+    // statements, expressions, or comments on the same line as a require()
+    // declaration, we don't remove that require(). Like the logic above, this
+    // simplifies the code significantly.
+    .filter(({ declaration: { loc: { start, end } } }) => {
+      const before = sourceByLine[start.line].slice(0, start.column);
+      const after = sourceByLine[end.line].slice(end.column + 1);
+      return whiteRegex.test(before) && whiteRegex.test(after);
+    })
+    // Target unused declarations. We don't need to check columns because we've
+    // filtered to declarations that occupy entire lines.
+    .filter(r => {
       const { loc: { start, end } } = r.declarators[0];
-
-      if (start.line === end.line && locs[start.line]) {
-        remove = locs[start.line].some(
-          column => column >= start.column && column <= end.column
-        );
-      } else {
-        for (let i = start.line; i <= end.line; i++) {
-          if (
-            locs[i] &&
-            (i > start.line && i < end.line ||
-              i === start.line && locs[i].some(c => c >= start.column) ||
-              i === end.line && locs[i].some(c => c <= end.column))
-          ) {
-            remove = true;
-            break;
-          }
+      for (let line = start.line; line <= end.line; line++) {
+        if (unused[line]) {
+          return true;
         }
       }
-
-      if (remove) {
-        return r.declaration.loc;
-      }
-      return null;
+      return false;
     })
-    .filter(r => r !== null);
+    .reduce(
+      (lines, { declaration: { loc: { start, end } } }) => {
+        for (let line = start.line; line <= end.line; line++) {
+          lines.add(line);
+        }
+        return lines;
+      },
+      new Set()
+    );
 }
 
-function rewriteCode(sourceCode, reqs, idents, ranges) {
+function rewriteCode(sourceCode, reqs, idents, linesToRemove) {
   // line numbers are 1-indexed, so add a blank line to make indexing easy
-  const sourceLines = sourceCode.lines.slice(0);
-  sourceLines.unshift("");
+  const sourceByLine = sourceCode.lines.slice(0);
+  sourceByLine.unshift("");
+  linesToRemove.add(0);
 
-  let line = 1;
-  let column = 0;
-  let newCode;
-  let hasAddedRequires;
-  let requiresLine;
-  let requiresText;
+  const lastReq = reqs.length > 0 ? reqs[reqs.length - 1] : null;
+  const requiresText = lastReq
+    ? composeMatchingRequires(lastReq, sourceCode, idents)
+    : composeNewRequires(sourceCode, idents);
+  const addRequiresLine = lastReq ? lastReq.declaration.loc.end.line : 0;
+  let newCode = "";
 
-  if (idents.length === 0) {
-    newCode = "";
-    hasAddedRequires = true;
-  } else {
-    const lastReq = reqs.length > 0 ? reqs[reqs.length - 1] : null;
-    requiresText = lastReq
-      ? composeMatchingRequires(lastReq, sourceCode, idents)
-      : composeNewRequires(sourceCode, idents);
-
-    if (lastReq) {
-      newCode = "";
-      hasAddedRequires = false;
-      requiresLine = lastReq.declaration.loc.end.line;
-    } else {
-      newCode = requiresText + "\n\n";
-      hasAddedRequires = true;
+  for (let line = 0; line < sourceByLine.length; line++) {
+    if (!linesToRemove.has(line)) {
+      newCode += sourceByLine[line] + "\n";
+    }
+    if (line === addRequiresLine && requiresText.length > 0) {
+      // when prepending requires, add extra blank line between requires and code
+      newCode += requiresText + (lastReq ? "\n" : "\n\n");
     }
   }
 
-  // to ensure we process all the code, add a final range
-  ranges.push({ start: { line: sourceLines.length } });
-
-  ranges.forEach(range => {
-    for (; line < range.start.line; line++) {
-      if (column === 0 || !whiteRegex.test(sourceLines[line].slice(column))) {
-        newCode += sourceLines[line].slice(column) + "\n";
-      }
-      if (!hasAddedRequires && line >= requiresLine) {
-        newCode += requiresText + "\n";
-        hasAddedRequires = true;
-      }
-      column = 0;
-    }
-
-    if (line >= sourceLines.length) {
-      return;
-    }
-
-    newCode += sourceLines[line].slice(column, range.start.column);
-    line = range.end.line;
-    column = range.end.column;
-  });
-
-  if (newCode.slice(-2) === "\n\n") {
+  if (newCode.slice(-1) !== "\n") {
+    newCode = newCode + "\n";
+  } else if (newCode.slice(-2) === "\n\n") {
     newCode = newCode.slice(0, -1);
   }
   return newCode;

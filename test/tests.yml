@@ -163,16 +163,6 @@
 
     util.inspect({})
 
-- name: dont-remove-multiple-declarators
-  input: |
-    const fs = require("fs"), util = require("util")
-
-    fs.readFile()
-  expected: |
-    const fs = require("fs"), util = require("util")
-
-    fs.readFile()
-
 - name: remove-and-append
   input: |
     const fs = require("fs")
@@ -186,3 +176,29 @@
 
     util.inspect({})
     http.createServer()
+
+- name: keep-multiple-declarators
+  input: |
+    const fs = require("fs"), util = require("util")
+
+    fs.readFile()
+  expected: |
+    const fs = require("fs"), util = require("util")
+
+    fs.readFile()
+
+- name: keep-same-line-code-before
+  input: |
+    const x = 3; const fs = require("fs");
+    /* some comment */ const util = require("util");
+  expected: |
+    const x = 3; const fs = require("fs");
+    /* some comment */ const util = require("util");
+
+- name: keep-same-line-code-after
+  input: |
+    const fs = require("fs"); const x = 3;
+    const util = require("util"); // some comment
+  expected: |
+    const fs = require("fs"); const x = 3;
+    const util = require("util"); // some comment

@@ -4,6 +4,7 @@ parserOptions:
     jsx: true
 env:
   node: true
+  es6: true
 root: true
 extends:
   - eslint:recommended
