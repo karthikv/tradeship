@@ -1,50 +1,20 @@
 const repl = require("repl");
-const { CLIEngine, linter } = require("eslint");
+const { lint } = require("./common");
 
 const undefRegex = /^'(.*?)' is not defined.$/;
 const whiteRegex = /^\s*$/;
 
-exports.run = code => {
-  const { violations, sourceCode } = lint(code);
-  const idents = findMissingIdents(violations);
+exports.run = function(code) {
+  const { violations, sourceCode } = lint(code, {
+    "no-undef": "error",
+    "no-unused-vars": "error"
+  });
+  const missingIdents = findMissingIdents(violations);
 
   const reqs = findRequires(sourceCode);
   const linesToRemove = findLinesToRemove(sourceCode, reqs, violations);
-  return rewriteCode(sourceCode, reqs, idents, linesToRemove);
+  return rewriteCode(sourceCode, reqs, missingIdents, linesToRemove);
 };
-
-function lint(code) {
-  const cli = new CLIEngine({
-    useEslintrc: true,
-    rules: {
-      "no-undef": "error",
-      "no-unused-vars": "error"
-    }
-  });
-
-  const config = cli.getConfigForFile(".");
-  if (Object.getOwnPropertyNames(config.env).length === 0) {
-    // assume both node and browser globals
-    config.env = {
-      node: true,
-      browser: true
-    };
-  }
-  if (Object.getOwnPropertyNames(config.parserOptions).length === 0) {
-    // assume es6 features
-    config.parserOptions = {
-      ecmaVersion: 6,
-      sourceType: "module",
-      ecmaFeatures: {
-        impliedStrict: true,
-        jsx: true
-      }
-    };
-  }
-
-  const violations = linter.verify(code, config);
-  return { violations, sourceCode: linter.getSourceCode() };
-}
 
 function findMissingIdents(violations) {
   return violations
@@ -125,7 +95,7 @@ function findLinesToRemove(sourceCode, reqs, violations) {
     );
 }
 
-function rewriteCode(sourceCode, reqs, idents, linesToRemove) {
+function rewriteCode(sourceCode, reqs, missingIdents, linesToRemove) {
   // line numbers are 1-indexed, so add a blank line to make indexing easy
   const sourceByLine = sourceCode.lines.slice(0);
   sourceByLine.unshift("");
@@ -133,8 +103,8 @@ function rewriteCode(sourceCode, reqs, idents, linesToRemove) {
 
   const lastReq = reqs.length > 0 ? reqs[reqs.length - 1] : null;
   const requiresText = lastReq
-    ? composeMatchingRequires(lastReq, sourceCode, idents)
-    : composeNewRequires(sourceCode, idents);
+    ? composeMatchingRequires(lastReq, sourceCode, missingIdents)
+    : composeNewRequires(sourceCode, missingIdents);
   const addRequiresLine = lastReq ? lastReq.declaration.loc.end.line : 0;
   let newCode = "";
 
@@ -156,7 +126,7 @@ function rewriteCode(sourceCode, reqs, idents, linesToRemove) {
   return newCode;
 }
 
-function composeMatchingRequires(req, { lines, text }, idents) {
+function composeMatchingRequires(req, { lines, text }, missingIdents) {
   const {
     kind,
     loc: { end: { line, column } }
@@ -176,7 +146,7 @@ function composeMatchingRequires(req, { lines, text }, idents) {
     quote = mostFreqQuote(text);
   }
 
-  return idents
+  return missingIdents
     .map(
       ident =>
         `${kind} ${ident} = require(${quote}${identToLib(
@@ -186,7 +156,7 @@ function composeMatchingRequires(req, { lines, text }, idents) {
     .join("\n");
 }
 
-function composeNewRequires({ lines, text }, idents) {
+function composeNewRequires({ lines, text }, missingIdents) {
   let numSemis = count(text, ";");
   let semi = numSemis > 0 && numSemis >= lines.length / 6 ? ";" : "";
 
@@ -197,7 +167,7 @@ function composeNewRequires({ lines, text }, idents) {
   }));
   let kind = maxBy(kindFreqs, kf => kf.count).kind;
 
-  return idents
+  return missingIdents
     .map(
       ident =>
         `${kind} ${ident} = require(${quote}${identToLib(

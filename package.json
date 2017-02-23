@@ -1,14 +1,11 @@
 {
   "dependencies": {
-    "ava": "^0.18.1",
     "babylon": "^6.15.0",
     "eslint": "^3.15.0",
-    "global": "^4.3.1",
-    "import-js": "^2.1.2",
-    "react": "^15.4.2",
     "underscore": "^1.8.3"
   },
   "devDependencies": {
+    "ava": "^0.18.1",
     "js-yaml": "^3.8.1",
     "prettier": "^0.17.1"
   },
@@ -19,7 +16,7 @@
     "source": [
       "**/*.js",
       "!node_modules/*",
-      "test/tests.yml"
+      "test/*.yml"
     ]
   }
 }

@@ -4,15 +4,28 @@ const yaml = require("js-yaml");
 const test = require("ava").default;
 
 const importer = require("../importer");
+const parser = require("../parser");
 
-const testsPath = path.join(__dirname, "tests.yml");
-const tests = yaml.safeLoad(fs.readFileSync(testsPath, "utf8"));
+const importerYAML = fs.readFileSync(
+  path.join(__dirname, "importer.yml"),
+  "utf8"
+);
+const importerTests = yaml.safeLoad(importerYAML);
 
-function runTest(input, expected, t) {
-  const actual = importer.run(input);
-  t.is(actual, expected);
-}
+importerTests.forEach(({ name, input, expected }) => {
+  test(`importer-${name}`, t => {
+    const actual = importer.run(input);
+    t.is(actual, expected);
+  });
+});
 
-tests.forEach(({ name, input, expected }) => {
-  test(name, runTest.bind(this, input, expected));
+const parserYAML = fs.readFileSync(path.join(__dirname, "parser.yml"), "utf8");
+const parserTests = yaml.safeLoad(parserYAML);
+
+parserTests.forEach(({ name, input, idents, props }) => {
+  test(`parser-${name}`, t => {
+    const actual = parser.run(input);
+    t.deepEqual(actual.idents, new Set(idents || []));
+    t.deepEqual(actual.props, new Set(props || []));
+  });
 });

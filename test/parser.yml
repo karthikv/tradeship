@@ -1,0 +1,94 @@
+- name: assign-ident
+  input: |
+    const x = 3;
+    module.exports = x;
+  idents: [x]
+
+- name: assign-assign
+  input: |
+    let x, y;
+    x = module.exports = y = 4;
+  idents: [x, y]
+
+- name: assign-member
+  input: |
+    const x = { y: 4 };
+    module.exports = x.y;
+  idents: [y]
+
+- name: assign-fn
+  input: |
+    module.exports = function foo() {};
+  idents: [foo]
+
+- name: assign-new
+  input: |
+    module.exports = new Bar();
+  idents: [Bar]
+
+- name: assign-other
+  input: |
+    module.exports = function() {};
+    module.exports = () => {};
+    module.exports = {};
+    module.exports = someFn();
+    module.exports = 3;
+  idents: []
+
+- name: assign-object
+  input: |
+    module.exports = {
+      a: 3,
+      b() {},
+      c: true
+    };
+  props: [a, b, c]
+
+- name: assign-exports-props
+  input: |
+    exports.a = 3;
+    exports.b = function() {};
+    module.exports.c = true;
+  props: [a, b, c]
+
+- name: assign-ident-object
+  input: |
+    const x = {
+      a: 3,
+      b() {},
+      c: true
+    };
+    module.exports = x;
+  idents: [x]
+  props: [a, b, c]
+
+- name: assign-ident-object-individual
+  input: |
+    const x = {};
+    x.a = 3;
+    x.b = () => {};
+    x.c = true;
+    module.exports = x;
+  idents: [x]
+  props: [a, b, c]
+
+- name: assign-ident-object-recursive
+  input: |
+    const x = { a: 3 };
+    const y = x;
+    const z = y;
+    module.exports = z;
+  idents: [z]
+  props: [a]
+
+- name: assign-ident-object-overwrite
+  input: |
+    const x = {};
+    x.a = 3;
+    x.b = () => {};
+    x.c = true
+    x = {d: "hi"};
+    const y = x;
+    module.exports = y;
+  idents: [y]
+  props: [d]
