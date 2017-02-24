@@ -1,22 +1,36 @@
+const fs = require("fs");
 const repl = require("repl");
-const { lint } = require("./common");
+const path = require("path");
+
+const { lint, promisify } = require("./common");
+const readFile = promisify(fs.readFile);
 
 const undefRegex = /^'(.*?)' is not defined.$/;
 const whiteRegex = /^\s*$/;
+const identRegex = /^[$a-z_][0-9a-z_$]*$/i;
 
 exports.run = function(code) {
-  const { violations, sourceCode } = lint(code, {
-    "no-undef": "error",
-    "no-unused-vars": "error"
-  });
-  const missingIdents = findMissingIdents(violations);
+  return getIdentToLib().then(identToLib => {
+    const { violations, sourceCode } = lint(code, {
+      "no-undef": "error",
+      "no-unused-vars": "error"
+    });
 
-  const reqs = findRequires(sourceCode);
-  const linesToRemove = findLinesToRemove(sourceCode, reqs, violations);
-  return rewriteCode(sourceCode, reqs, missingIdents, linesToRemove);
+    const missingIdents = findMissingIdents(violations, identToLib);
+    const reqs = findRequires(sourceCode);
+    const linesToRemove = findLinesToRemove(sourceCode, reqs, violations);
+
+    return rewriteCode({
+      sourceCode,
+      reqs,
+      missingIdents,
+      linesToRemove,
+      identToLib
+    });
+  });
 };
 
-function findMissingIdents(violations) {
+function findMissingIdents(violations, identToLib) {
   return violations
     .filter(v => v.ruleId === "no-undef")
     .map(v => {
@@ -26,7 +40,60 @@ function findMissingIdents(violations) {
       }
       return null;
     })
-    .filter(ident => ident !== null && identToLib(ident));
+    .filter(ident => ident !== null && identToLib[ident]);
+}
+
+function getIdentToLib() {
+  const identToLib = {};
+  repl._builtinLibs.forEach(lib => identToLib[lib] = lib);
+
+  return findPkgMeta(".").then(meta => {
+    if (!meta) {
+      return identToLib;
+    }
+
+    Object.keys(meta.dependencies)
+      .concat(Object.keys(meta.devDependencies))
+      .forEach(dep => {
+        if (identRegex.test(dep)) {
+          identToLib[dep] = dep;
+        }
+
+        const camelCase = dep
+          .split(/\W+/g)
+          .filter(p => p !== "")
+          .map((p, i) => i === 0 ? p : p[0].toUpperCase() + p.slice(1))
+          .join("");
+
+        if (camelCase.length > 0) {
+          const classCase = camelCase[0].toUpperCase() + camelCase.slice(1);
+          // TODO: handle case of multiple matches for same ident?
+          identToLib[camelCase] = dep;
+          identToLib[classCase] = dep;
+        }
+      });
+
+    return identToLib;
+  });
+}
+
+function findPkgMeta(dir) {
+  if (!dir) {
+    dir = path.resolve(".");
+  }
+
+  return readFile(path.join(dir, "package.json"))
+    .catch(err => {
+      if (err.code === "ENOENT") {
+        if (dir === "/") {
+          return null;
+        }
+        return findPkgMeta(path.join(dir, ".."));
+      } else {
+        throw err;
+      }
+    })
+    .then(json => JSON.parse(json));
 }
 
 function findRequires(sourceCode) {
@@ -95,7 +162,9 @@ function findLinesToRemove(sourceCode, reqs, violations) {
     );
 }
 
-function rewriteCode(sourceCode, reqs, missingIdents, linesToRemove) {
+function rewriteCode(
+  { sourceCode, reqs, missingIdents, linesToRemove, identToLib }
+) {
   // line numbers are 1-indexed, so add a blank line to make indexing easy
   const sourceByLine = sourceCode.lines.slice(0);
   sourceByLine.unshift("");
@@ -103,8 +172,13 @@ function rewriteCode(sourceCode, reqs, missingIdents, linesToRemove) {
 
   const lastReq = reqs.length > 0 ? reqs[reqs.length - 1] : null;
   const requiresText = lastReq
-    ? composeMatchingRequires(lastReq, sourceCode, missingIdents)
-    : composeNewRequires(sourceCode, missingIdents);
+    ? composeMatchingRequires({
+        sourceCode,
+        missingIdents,
+        identToLib,
+        req: lastReq
+      })
+    : composeNewRequires(sourceCode, missingIdents, identToLib);
   const addRequiresLine = lastReq ? lastReq.declaration.loc.end.line : 0;
   let newCode = "";
 
@@ -126,7 +200,10 @@ function rewriteCode(sourceCode, reqs, missingIdents, linesToRemove) {
   return newCode;
 }
 
-function composeMatchingRequires(req, { lines, text }, missingIdents) {
+function composeMatchingRequires(
+  { req, sourceCode, missingIdents, identToLib }
+) {
+  const { lines, text } = sourceCode;
   const {
     kind,
     loc: { end: { line, column } }
@@ -149,14 +226,14 @@ function composeMatchingRequires(req, { lines, text }, missingIdents) {
   return missingIdents
     .map(
       ident =>
-        `${kind} ${ident} = require(${quote}${identToLib(
+        `${kind} ${ident} = require(${quote}${identToLib[
           ident
-        )}${quote})${semi}`
+        ]}${quote})${semi}`
     )
     .join("\n");
 }
 
-function composeNewRequires({ lines, text }, missingIdents) {
+function composeNewRequires({ lines, text }, missingIdents, identToLib) {
   let numSemis = count(text, ";");
   let semi = numSemis > 0 && numSemis >= lines.length / 6 ? ";" : "";
 
@@ -170,9 +247,9 @@ function composeNewRequires({ lines, text }, missingIdents) {
   return missingIdents
     .map(
       ident =>
-        `${kind} ${ident} = require(${quote}${identToLib(
+        `${kind} ${ident} = require(${quote}${identToLib[
           ident
-        )}${quote})${semi}`
+        ]}${quote})${semi}`
     )
     .join("\n");
 }
@@ -203,12 +280,4 @@ function mostFreqQuote(str) {
     count: count(str, quote)
   }));
   return maxBy(quoteFreqs, qf => qf.count).quote;
-}
-
-function identToLib(ident) {
-  const coreLibs = repl._builtinLibs;
-  if (coreLibs.indexOf(ident) !== -1) {
-    return ident;
-  }
-  return null;
 }

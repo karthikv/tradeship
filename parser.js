@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const childProcess = require("child_process");
 
 const { promisify, lint } = require("./common");
 const findExports = require("./rules/find-exports");
@@ -8,8 +7,6 @@ const findExports = require("./rules/find-exports");
 const readFile = promisify(fs.readFile, fs);
 const readdir = promisify(fs.readdir, fs);
 const stat = promisify(fs.stat, fs);
-
-const trailingWhiteRegex = /\s*$/;
 
 exports.run = function(code) {
   lint(code, { "find-exports": "error" });
@@ -37,23 +34,6 @@ exports.parsePackages = function() {
       return exportMap;
     });
 };
-
-function findNodeModulesDir() {
-  const cmd = childProcess.spawn("npm", ["root"]);
-  let output = "";
-  cmd.stdout.on("data", str => output += str);
-
-  return new Promise((resolve, reject) => {
-    cmd.on("close", code => {
-      if (code === 0) {
-        resolve(output.replace(trailingWhiteRegex, ""));
-      } else {
-        reject(new Error(`bad exit code: ${code}; output: ${output}`));
-      }
-    });
-    cmd.on("error", err => reject(err));
-  });
-}
 
 function parsePackageExports(dir) {
   return readFile(path.join(dir, "package.json"), "utf8").then(json => {

@@ -202,3 +202,35 @@
   expected: |
     const fs = require("fs"); const x = 3;
     const util = require("util"); // some comment
+
+- name: dependency
+  input: |
+    eslint.lint();
+  expected: |
+    const eslint = require("eslint");
+
+    eslint.lint();
+
+- name: dependency-dev
+  input: |
+    ava.test();
+  expected: |
+    const ava = require("ava");
+
+    ava.test();
+
+- name: dependency-capital
+  input: |
+    new Eslint();
+  expected: |
+    const Eslint = require("eslint");
+
+    new Eslint();
+
+- name: dependency-camel
+  input: |
+    jsYaml.load();
+  expected: |
+    const jsYaml = require("js-yaml");
+
+    jsYaml.load();
