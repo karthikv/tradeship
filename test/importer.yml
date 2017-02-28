@@ -134,58 +134,58 @@
 
 - name: remove
   input: |
-    const fs = require("fs")
-    console.log("Hello")
+    const fs = require("fs");
+    console.log("Hello");
   expected: |
-    console.log("Hello")
+    console.log("Hello");
 
 - name: remove-empty
   input: |
-    const fs = require("fs")
+    const fs = require("fs");
   expected: "\n"
 
 - name: remove-only-requires
   input: |
-    const fs = require("fs")
-    const x = 3
+    const fs = require("fs");
+    const x = 3;
   expected: |
-    const x = 3
+    const x = 3;
 
 - name: remove-multiple
   input: |
-    const fs = require("fs")
-    const util = require("util")
-    const http = require("http")
+    const fs = require("fs");
+    const util = require("util");
+    const http = require("http");
 
-    util.inspect({})
+    util.inspect({});
   expected: |
-    const util = require("util")
+    const util = require("util");
 
-    util.inspect({})
+    util.inspect({});
 
 - name: remove-and-append
   input: |
-    const fs = require("fs")
-    const util = require("util")
+    const fs = require("fs");
+    const util = require("util");
 
-    util.inspect({})
-    http.createServer()
+    util.inspect({});
+    http.createServer();
   expected: |
-    const util = require("util")
-    const http = require("http")
+    const util = require("util");
+    const http = require("http");
 
-    util.inspect({})
-    http.createServer()
+    util.inspect({});
+    http.createServer();
 
 - name: keep-multiple-declarators
   input: |
-    const fs = require("fs"), util = require("util")
+    const fs = require("fs"), util = require("util");
 
-    fs.readFile()
+    fs.readFile();
   expected: |
-    const fs = require("fs"), util = require("util")
+    const fs = require("fs"), util = require("util");
 
-    fs.readFile()
+    fs.readFile();
 
 - name: keep-same-line-code-before
   input: |
@@ -202,6 +202,70 @@
   expected: |
     const fs = require("fs"); const x = 3;
     const util = require("util"); // some comment
+
+- name: prop
+  input: |
+    readFile();
+  expected: |
+    const { readFile } = require("fs");
+
+    readFile();
+
+- name: prop-multiple
+  input: |
+    readFile();
+    readdir();
+  expected: |
+    const { readFile, readdir } = require("fs");
+
+    readFile();
+    readdir();
+
+- name: prop-wrap
+  input: |
+    readFileSync();
+    readdirSync();
+    createReadStream();
+    createWriteStream();
+  expected: |
+    const {
+      readFileSync,
+      readdirSync,
+      createReadStream,
+      createWriteStream
+    } = require("fs");
+
+    readFileSync();
+    readdirSync();
+    createReadStream();
+    createWriteStream();
+
+- name: prop-existing
+  input: |
+    const { readFile, readdir } = require("fs");
+
+    readFile();
+    readdir();
+  expected: |
+    const { readFile, readdir } = require("fs");
+
+    readFile();
+    readdir();
+
+- name: prop-remove
+  input: |
+    const { readFile } = require("fs");
+    console.log("Hello");
+  expected: |
+    console.log("Hello");
+
+- name: prop-remove-existing
+  input: |
+    const { readFile, readdir } = require("fs");
+    readFile();
+  expected: |
+    const { readFile } = require("fs");
+    readFile();
 
 - name: dependency
   input: |

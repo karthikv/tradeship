@@ -1,25 +1,26 @@
 const { lint } = require("./common");
+const findImports = require("./rules/find-imports");
 const IdentLib = require("./ident-lib");
 
 const undefRegex = /^'(.*?)' is not defined.$/;
-const whiteRegex = /^\s*$/;
 
 exports.run = function(code) {
   return IdentLib.populate().then(identLib => {
     const { violations, sourceCode } = lint(code, {
       "no-undef": "error",
-      "no-unused-vars": "error"
+      "no-unused-vars": "error",
+      "find-imports": "error"
     });
 
+    const { reqs, reqsToAdd, reqsToRemove } = findImports.retrieve();
     const missingIdents = findMissingIdents(violations, identLib);
-    const reqs = findRequires(sourceCode);
-    const linesToRemove = findLinesToRemove(sourceCode, reqs, violations);
 
     return rewriteCode({
       sourceCode,
       reqs,
+      reqsToAdd,
+      reqsToRemove,
       missingIdents,
-      linesToRemove,
       identLib
     });
   });
@@ -38,92 +39,37 @@ function findMissingIdents(violations, identLib) {
     .filter(ident => ident !== null && identLib.search(ident));
 }
 
-function findRequires(sourceCode) {
-  const declarations = sourceCode.ast.body.filter(
-    node => node.type === "VariableDeclaration"
-  );
-
-  return declarations
-    .map(d => ({
-      declaration: d,
-      declarators: d.declarations.filter(
-        ({ init }) =>
-          init.type === "CallExpression" &&
-            init.callee.type === "Identifier" &&
-            init.callee.name === "require"
-      )
-    }))
-    .filter(d => d.declarators.length > 0);
-}
-
-function findLinesToRemove(sourceCode, reqs, violations) {
-  // line numbers are 1-indexed, so add a blank line to make indexing easy
-  const sourceByLine = sourceCode.lines.slice(0);
-  sourceByLine.unshift("");
-
-  const unused = {};
-  violations
-    .filter(v => v.ruleId === "no-unused-vars")
-    .forEach(v => unused[v.line] = true);
-
-  return reqs
-    // Multiple variable declarations like const x = require(), y = require()
-    // are significantly more difficult to remove due to the commas. For
-    // simplicitly, we ignore those cases. More generally, it makes sense for
-    // us to only remove require()s we have added, and all require()s that we
-    // add are single variable declarations.
-    .filter(r => r.declarators.length === 1)
-    // Limit to declarations that occupy entire lines. If there are other
-    // statements, expressions, or comments on the same line as a require()
-    // declaration, we don't remove that require(). Like the logic above, this
-    // simplifies the code significantly.
-    .filter(({ declaration: { loc: { start, end } } }) => {
-      const before = sourceByLine[start.line].slice(0, start.column);
-      const after = sourceByLine[end.line].slice(end.column + 1);
-      return whiteRegex.test(before) && whiteRegex.test(after);
-    })
-    // Target unused declarations. We don't need to check columns because we've
-    // filtered to declarations that occupy entire lines.
-    .filter(r => {
-      const { loc: { start, end } } = r.declarators[0];
-      for (let line = start.line; line <= end.line; line++) {
-        if (unused[line]) {
-          return true;
-        }
-      }
-      return false;
-    })
-    .reduce(
-      (lines, { declaration: { loc: { start, end } } }) => {
-        for (let line = start.line; line <= end.line; line++) {
-          lines.add(line);
-        }
-        return lines;
-      },
-      new Set()
-    );
-}
-
 function rewriteCode(
-  { sourceCode, reqs, missingIdents, linesToRemove, identLib }
+  { sourceCode, reqs, reqsToAdd, reqsToRemove, missingIdents, identLib }
 ) {
   // line numbers are 1-indexed, so add a blank line to make indexing easy
   const sourceByLine = sourceCode.lines.slice(0);
   sourceByLine.unshift("");
+
+  const { linesToRemove, libsToAdd } = resolveIdents({
+    missingIdents,
+    identLib,
+    reqs,
+    reqsToAdd,
+    reqsToRemove
+  });
+  // remove first blank line we artifically introduced
   linesToRemove.add(0);
 
-  const lastReq = reqs.length > 0 ? reqs[reqs.length - 1] : null;
-  const requiresText = lastReq
-    ? composeMatchingRequires({
-        sourceCode,
-        missingIdents,
-        identLib,
-        req: lastReq
-      })
-    : composeNewRequires(sourceCode, missingIdents, identLib);
-  const addRequiresLine = lastReq ? lastReq.declaration.loc.end.line : 0;
-  let newCode = "";
+  const lastReq = reqs[reqs.length - 1] ||
+    reqsToRemove[reqsToRemove.length - 1];
+  const addRequiresLine = lastReq
+    ? lastReq.node.declarations[0].loc.end.line
+    : 0;
 
+  let requiresText;
+  if (lastReq) {
+    requiresText = composeMatchingRequires(sourceCode, lastReq, libsToAdd);
+  } else {
+    requiresText = composeNewRequires(sourceCode, libsToAdd);
+  }
+
+  let newCode = "";
   for (let line = 0; line < sourceByLine.length; line++) {
     if (!linesToRemove.has(line)) {
       newCode += sourceByLine[line] + "\n";
@@ -142,39 +88,79 @@ function rewriteCode(
   return newCode;
 }
 
-function composeMatchingRequires({ req, sourceCode, missingIdents, identLib }) {
+function resolveIdents(
+  {
+    missingIdents,
+    identLib,
+    reqs,
+    reqsToAdd,
+    reqsToRemove
+  }
+) {
+  const results = missingIdents.map(ident => identLib.search(ident));
+  const deps = reqsToAdd.map(req => req.dep).concat(results.map(r => r.dep));
+
+  const libsToAdd = {};
+  deps.forEach(dep => libsToAdd[dep] = { props: [], ident: null });
+
+  reqsToAdd.forEach(({ dep, props }) => {
+    libsToAdd[dep].props.push(...props);
+  });
+
+  missingIdents.forEach((ident, i) => {
+    const { dep, isProp } = results[i];
+    const lib = libsToAdd[dep];
+
+    if (isProp) {
+      lib.props.push(ident);
+    } else {
+      lib.ident = ident;
+    }
+  });
+
+  reqs.forEach(({ node, dep, props, ident }) => {
+    const lib = libsToAdd[dep];
+    if (lib) {
+      if (props) {
+        lib.props.push(...props);
+      } else {
+        lib.ident = ident;
+      }
+      reqsToRemove.push({ node });
+    }
+  });
+
+  const linesToRemove = new Set();
+  reqsToRemove.forEach(({ node: { loc } }) => {
+    for (let line = loc.start.line; line <= loc.end.line; line++) {
+      linesToRemove.add(line);
+    }
+  });
+
+  return { libsToAdd, linesToRemove };
+}
+
+function composeMatchingRequires(sourceCode, { node }, libs) {
   const { lines, text } = sourceCode;
   const {
     kind,
     loc: { end: { line, column } }
-  } = req.declaration;
+  } = node;
 
   const semi = lines[line - 1][column - 1] === ";" ? ";" : "";
-  const args = req.declarators[req.declarators.length - 1].init.arguments;
+  const arg = node.declarations[0].init.arguments[0].raw;
   let quote;
 
-  if (
-    args &&
-    args[0].type === "Literal" &&
-    (args[0].raw[0] === "'" || args[0].raw[0] === '"')
-  ) {
-    quote = args[0].raw[0];
+  if (arg[0] === "'" || arg[0] === '"') {
+    quote = arg[0];
   } else {
     quote = mostFreqQuote(text);
   }
 
-  return missingIdents
-    .map(ident => {
-      const { dep, prop } = identLib.search(ident);
-      // TODO: handle props
-      if (!prop) {
-        return `${kind} ${ident} = require(${quote}${dep}${quote})${semi}`;
-      }
-    })
-    .join("\n");
+  return composeRequires({ kind, quote, semi, libs });
 }
 
-function composeNewRequires({ lines, text }, missingIdents, identLib) {
+function composeNewRequires({ lines, text }, libs) {
   let numSemis = count(text, ";");
   let semi = numSemis > 0 && numSemis >= lines.length / 6 ? ";" : "";
 
@@ -185,26 +171,45 @@ function composeNewRequires({ lines, text }, missingIdents, identLib) {
   }));
   let kind = maxBy(kindFreqs, kf => kf.count).kind;
 
-  return missingIdents
-    .map(ident => {
-      const { dep, prop } = identLib.search(ident);
-      // TODO: handle props
-      if (!prop) {
-        return `${kind} ${ident} = require(${quote}${dep}${quote})${semi}`;
-      }
-    })
-    .join("\n");
+  return composeRequires({ kind, quote, semi, libs });
 }
 
-function count(str, substr) {
-  let count = 0;
-  let index = 0;
+function composeRequires({ kind, quote, semi, libs }) {
+  const statements = [];
+  const tab = "  ";
 
-  while ((index = str.indexOf(substr, index)) !== -1) {
-    count = count + 1;
-    index += substr.length;
+  // TODO: ordering requires?
+  for (let dep in libs) {
+    const { props, ident } = libs[dep];
+    const requireText = `require(${quote}${dep}${quote})${semi}`;
+
+    if (ident) {
+      statements.push(`${kind} ${ident} = ${requireText}`);
+    }
+    if (props.length > 0) {
+      let statement = `${kind} { ${props.join(", ")} } = ${requireText}`;
+
+      // TODO: line length?
+      if (statement.length > 80) {
+        // TODO: trailing comma?
+        // TODO: ident level
+        const propsText = props.join(`,\n${tab}`);
+        statement = `${kind} {\n${tab}${propsText}\n} = ${requireText}`;
+      }
+
+      statements.push(statement);
+    }
   }
-  return count;
+
+  return statements.join("\n");
+}
+
+function mostFreqQuote(str) {
+  let quoteFreqs = ['"', "'"].map(quote => ({
+    quote,
+    count: count(str, quote)
+  }));
+  return maxBy(quoteFreqs, qf => qf.count).quote;
 }
 
 function maxBy(array, callback) {
@@ -216,10 +221,13 @@ function maxBy(array, callback) {
   return array[index];
 }
 
-function mostFreqQuote(str) {
-  let quoteFreqs = ['"', "'"].map(quote => ({
-    quote,
-    count: count(str, quote)
-  }));
-  return maxBy(quoteFreqs, qf => qf.count).quote;
+function count(str, substr) {
+  let count = 0;
+  let index = 0;
+
+  while ((index = str.indexOf(substr, index)) !== -1) {
+    count = count + 1;
+    index += substr.length;
+  }
+  return count;
 }

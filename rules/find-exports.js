@@ -1,4 +1,6 @@
-let exported = {};
+const { isGlobal, findVariable, getKey } = require("../common");
+
+const exported = {};
 exports.retrieve = function() {
   return exported;
 };
@@ -15,7 +17,9 @@ exports.create = function(context) {
         const { object, property } = node.left;
         const right = node.right;
 
-        if (isGlobal(object, context, "module") && isKey(property, "exports")) {
+        if (
+          isGlobal(context, object, "module") && getKey(property) === "exports"
+        ) {
           parseNames(right).forEach(n => idents.add(n));
           parseProps(context, right).forEach(p => props.add(p));
 
@@ -28,9 +32,9 @@ exports.create = function(context) {
 
         if (
           object.type === "MemberExpression" &&
-            isGlobal(object.object, context, "module") &&
-            isKey(object.property, "exports") ||
-          isGlobal(object, context, "exports")
+            isGlobal(context, object.object, "module") &&
+            getKey(object.property) === "exports" ||
+          isGlobal(context, object, "exports")
         ) {
           const key = getKey(property);
           if (key) {
@@ -112,43 +116,4 @@ function parseProps(context, node) {
   }
 
   return [];
-}
-
-function isGlobal(node, context, name) {
-  if (node.type === "Identifier" && node.name === name) {
-    const variable = findVariable(context, name);
-    return variable && variable.scope.type === "global";
-  }
-  return false;
-}
-
-function findVariable(context, name) {
-  let scope = context.getScope();
-
-  do {
-    const variable = scope.set.get(name);
-    if (variable) {
-      return variable;
-    }
-    scope = scope.upper;
-  } while (scope);
-
-  return null;
-}
-
-function isKey(node, key) {
-  return getKey(node) === key;
-}
-
-function getKey(node) {
-  switch (node.type) {
-    case "Identifier":
-      return node.name;
-
-    case "StringLiteral":
-      return node.value;
-
-    default:
-      return null;
-  }
 }

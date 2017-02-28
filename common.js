@@ -54,3 +54,38 @@ exports.promisify = (fn, context) => {
     });
   };
 };
+
+exports.isGlobal = function(context, node, name) {
+  if (node.type === "Identifier" && node.name === name) {
+    const variable = exports.findVariable(context, name);
+    return variable && variable.scope.type === "global";
+  }
+  return false;
+};
+
+exports.findVariable = function(context, name) {
+  let scope = context.getScope();
+
+  do {
+    const variable = scope.set.get(name);
+    if (variable) {
+      return variable;
+    }
+    scope = scope.upper;
+  } while (scope);
+
+  return null;
+};
+
+exports.getKey = function(node) {
+  switch (node.type) {
+    case "Identifier":
+      return node.name;
+
+    case "StringLiteral":
+      return node.value;
+
+    default:
+      return null;
+  }
+};

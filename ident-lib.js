@@ -87,8 +87,8 @@ module.exports = class IdentLib {
 
   search(ident) {
     if (this.idents[ident]) {
-      return { dep: this.idents[ident], prop: false };
+      return { dep: this.idents[ident], isProp: false };
     }
-    return { dep: this.props[ident], prop: true };
+    return { dep: this.props[ident], isProp: true };
   }
 };
