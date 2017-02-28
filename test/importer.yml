@@ -240,6 +240,85 @@
     createReadStream();
     createWriteStream();
 
+- name: prop-wrap-four-spaces
+  input: |
+    readFileSync();
+    readdirSync();
+    createReadStream();
+    
+    if (true) {
+        createWriteStream();
+    }
+  expected: |
+    const {
+        readFileSync,
+        readdirSync,
+        createReadStream,
+        createWriteStream
+    } = require("fs");
+
+    readFileSync();
+    readdirSync();
+    createReadStream();
+    
+    if (true) {
+        createWriteStream();
+    }
+
+- name: prop-wrap-hard-tab
+  input: |
+    readFileSync();
+    readdirSync();
+    createReadStream();
+    
+    if (true) {
+    	createWriteStream();
+    }
+  expected: |
+    const {
+    	readFileSync,
+    	readdirSync,
+    	createReadStream,
+    	createWriteStream
+    } = require("fs");
+
+    readFileSync();
+    readdirSync();
+    createReadStream();
+    
+    if (true) {
+    	createWriteStream();
+    }
+
+- name: prop-wrap-trailing-comma
+  input: |
+    readFileSync();
+    readdirSync();
+    createReadStream();
+    createWriteStream();
+
+    console.log({
+      a: 3,
+      b: 4,
+    })
+  expected: |
+    const {
+      readFileSync,
+      readdirSync,
+      createReadStream,
+      createWriteStream,
+    } = require("fs");
+
+    readFileSync();
+    readdirSync();
+    createReadStream();
+    createWriteStream();
+
+    console.log({
+      a: 3,
+      b: 4,
+    })
+
 - name: prop-existing
   input: |
     const { readFile, readdir } = require("fs");

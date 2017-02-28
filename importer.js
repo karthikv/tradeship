@@ -1,5 +1,6 @@
 const { lint } = require("./common");
 const findImports = require("./rules/find-imports");
+const findStyle = require("./rules/find-style");
 const IdentLib = require("./ident-lib");
 
 const undefRegex = /^'(.*?)' is not defined.$/;
@@ -8,8 +9,8 @@ exports.run = function(code) {
   return IdentLib.populate().then(identLib => {
     const { violations, sourceCode } = lint(code, {
       "no-undef": "error",
-      "no-unused-vars": "error",
-      "find-imports": "error"
+      "find-imports": "error",
+      "find-style": "error"
     });
 
     const reqs = findImports.retrieve();
@@ -50,16 +51,10 @@ function rewriteCode({ sourceCode, reqs, missingIdents, identLib }) {
   // remove first blank line we artifically introduced
   linesToRemove.add(0);
 
-  const lastReq = reqs[reqs.length - 1];
-  const addRequiresLine = lastReq
-    ? lastReq.node.declarations[0].loc.end.line
-    : 0;
-
-  let requiresText;
-  if (lastReq) {
-    requiresText = composeMatchingRequires(sourceCode, lastReq, libsToAdd);
-  } else {
-    requiresText = composeNewRequires(sourceCode, libsToAdd);
+  const requiresText = composeRequires(libsToAdd);
+  let addRequiresLine = 0;
+  if (reqs.length > 0) {
+    addRequiresLine = reqs[0].node.declarations[0].loc.start.line;
   }
 
   let newCode = "";
@@ -69,7 +64,7 @@ function rewriteCode({ sourceCode, reqs, missingIdents, identLib }) {
     }
     if (line === addRequiresLine && requiresText.length > 0) {
       // when prepending requires, add extra blank line between requires and code
-      newCode += requiresText + (lastReq ? "\n" : "\n\n");
+      newCode += requiresText + (reqs.length > 0 ? "\n" : "\n\n");
     }
   }
 
@@ -123,43 +118,9 @@ function resolveIdents(missingIdents, identLib, reqs) {
   return { libsToAdd, linesToRemove };
 }
 
-function composeMatchingRequires(sourceCode, { node }, libs) {
-  const { lines, text } = sourceCode;
-  const {
-    kind,
-    loc: { end: { line, column } }
-  } = node;
-
-  const semi = lines[line - 1][column - 1] === ";" ? ";" : "";
-  const arg = node.declarations[0].init.arguments[0].raw;
-  let quote;
-
-  if (arg[0] === "'" || arg[0] === '"') {
-    quote = arg[0];
-  } else {
-    quote = mostFreqQuote(text);
-  }
-
-  return composeRequires({ kind, quote, semi, libs });
-}
-
-function composeNewRequires({ lines, text }, libs) {
-  let numSemis = count(text, ";");
-  let semi = numSemis > 0 && numSemis >= lines.length / 6 ? ";" : "";
-
-  let quote = mostFreqQuote(text);
-  let kindFreqs = ["const", "let", "var"].map(kind => ({
-    kind,
-    count: count(text, kind)
-  }));
-  let kind = maxBy(kindFreqs, kf => kf.count).kind;
-
-  return composeRequires({ kind, quote, semi, libs });
-}
-
-function composeRequires({ kind, quote, semi, libs }) {
+function composeRequires(libs) {
+  const { kind, quote, semi, tab, trailingComma } = findStyle.retrieve();
   const statements = [];
-  const tab = "  ";
 
   const deps = Object.keys(libs).sort();
   deps.forEach(dep => {
@@ -174,10 +135,8 @@ function composeRequires({ kind, quote, semi, libs }) {
 
       // TODO: line length?
       if (statement.length > 80) {
-        // TODO: trailing comma?
-        // TODO: ident level
-        const propsText = props.join(`,\n${tab}`);
-        statement = `${kind} {\n${tab}${propsText}\n} = ${requireText}`;
+        const propsText = tab + props.join(`,\n${tab}`) + trailingComma;
+        statement = `${kind} {\n${propsText}\n} = ${requireText}`;
       }
 
       statements.push(statement);
@@ -185,32 +144,4 @@ function composeRequires({ kind, quote, semi, libs }) {
   });
 
   return statements.join("\n");
-}
-
-function mostFreqQuote(str) {
-  let quoteFreqs = ['"', "'"].map(quote => ({
-    quote,
-    count: count(str, quote)
-  }));
-  return maxBy(quoteFreqs, qf => qf.count).quote;
-}
-
-function maxBy(array, callback) {
-  const keys = array.map(elem => callback(elem));
-  const index = array.reduce(
-    (maxIndex, _, index) => keys[index] > keys[maxIndex] ? index : maxIndex,
-    0
-  );
-  return array[index];
-}
-
-function count(str, substr) {
-  let count = 0;
-  let index = 0;
-
-  while ((index = str.indexOf(substr, index)) !== -1) {
-    count = count + 1;
-    index += substr.length;
-  }
-  return count;
 }
