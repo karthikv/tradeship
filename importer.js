@@ -12,14 +12,12 @@ exports.run = function(code) {
       "find-imports": "error"
     });
 
-    const { reqs, reqsToAdd, reqsToRemove } = findImports.retrieve();
+    const reqs = findImports.retrieve();
     const missingIdents = findMissingIdents(violations, identLib);
 
     return rewriteCode({
       sourceCode,
       reqs,
-      reqsToAdd,
-      reqsToRemove,
       missingIdents,
       identLib
     });
@@ -39,25 +37,20 @@ function findMissingIdents(violations, identLib) {
     .filter(ident => ident !== null && identLib.search(ident));
 }
 
-function rewriteCode(
-  { sourceCode, reqs, reqsToAdd, reqsToRemove, missingIdents, identLib }
-) {
+function rewriteCode({ sourceCode, reqs, missingIdents, identLib }) {
   // line numbers are 1-indexed, so add a blank line to make indexing easy
   const sourceByLine = sourceCode.lines.slice(0);
   sourceByLine.unshift("");
 
-  const { linesToRemove, libsToAdd } = resolveIdents({
+  const { linesToRemove, libsToAdd } = resolveIdents(
     missingIdents,
     identLib,
-    reqs,
-    reqsToAdd,
-    reqsToRemove
-  });
+    reqs
+  );
   // remove first blank line we artifically introduced
   linesToRemove.add(0);
 
-  const lastReq = reqs[reqs.length - 1] ||
-    reqsToRemove[reqsToRemove.length - 1];
+  const lastReq = reqs[reqs.length - 1];
   const addRequiresLine = lastReq
     ? lastReq.node.declarations[0].loc.end.line
     : 0;
@@ -88,24 +81,12 @@ function rewriteCode(
   return newCode;
 }
 
-function resolveIdents(
-  {
-    missingIdents,
-    identLib,
-    reqs,
-    reqsToAdd,
-    reqsToRemove
-  }
-) {
+function resolveIdents(missingIdents, identLib, reqs) {
   const results = missingIdents.map(ident => identLib.search(ident));
-  const deps = reqsToAdd.map(req => req.dep).concat(results.map(r => r.dep));
+  const deps = reqs.map(req => req.dep).concat(results.map(r => r.dep));
 
   const libsToAdd = {};
   deps.forEach(dep => libsToAdd[dep] = { props: [], ident: null });
-
-  reqsToAdd.forEach(({ dep, props }) => {
-    libsToAdd[dep].props.push(...props);
-  });
 
   missingIdents.forEach((ident, i) => {
     const { dep, isProp } = results[i];
@@ -118,21 +99,23 @@ function resolveIdents(
     }
   });
 
+  const nodesToRemove = [];
   reqs.forEach(({ node, dep, props, ident }) => {
     const lib = libsToAdd[dep];
-    if (lib) {
-      if (props) {
-        lib.props.push(...props);
-      } else {
-        lib.ident = ident;
-      }
-      reqsToRemove.push({ node });
+    if (ident) {
+      lib.ident = ident;
+    }
+    if (props) {
+      lib.props.push(...props);
+    }
+    if (node) {
+      nodesToRemove.push(node);
     }
   });
 
   const linesToRemove = new Set();
-  reqsToRemove.forEach(({ node: { loc } }) => {
-    for (let line = loc.start.line; line <= loc.end.line; line++) {
+  nodesToRemove.forEach(({ loc: { start, end } }) => {
+    for (let line = start.line; line <= end.line; line++) {
       linesToRemove.add(line);
     }
   });
@@ -178,8 +161,8 @@ function composeRequires({ kind, quote, semi, libs }) {
   const statements = [];
   const tab = "  ";
 
-  // TODO: ordering requires?
-  for (let dep in libs) {
+  const deps = Object.keys(libs).sort();
+  deps.forEach(dep => {
     const { props, ident } = libs[dep];
     const requireText = `require(${quote}${dep}${quote})${semi}`;
 
@@ -199,7 +182,7 @@ function composeRequires({ kind, quote, semi, libs }) {
 
       statements.push(statement);
     }
-  }
+  });
 
   return statements.join("\n");
 }

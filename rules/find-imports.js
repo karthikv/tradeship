@@ -1,20 +1,14 @@
 const { isGlobal, findVariable, getKey } = require("../common");
 
 const whiteRegex = /^\s*$/;
-const exported = {};
+let reqs;
 
 exports.retrieve = function() {
-  return exported;
+  return reqs;
 };
 
 exports.create = function(context) {
-  const reqs = [];
-  const reqsToAdd = [];
-  const reqsToRemove = [];
-
-  exported.reqs = reqs;
-  exported.reqsToAdd = reqsToAdd;
-  exported.reqsToRemove = reqsToRemove;
+  reqs = [];
 
   const sourceCode = context.getSourceCode();
   const sourceByLine = sourceCode.lines.slice(0);
@@ -52,7 +46,7 @@ exports.create = function(context) {
         if (isUsed(id, context)) {
           reqs.push({ node, dep, ident: id.name });
         } else {
-          reqsToRemove.push({ node });
+          reqs.push({ node });
         }
       } else if (
         id.type === "ObjectPattern" &&
@@ -63,15 +57,7 @@ exports.create = function(context) {
       ) {
         const left = id.properties.filter(p => isUsed(p.value, context));
         const props = left.map(p => p.value.name);
-
-        if (left.length < id.properties.length) {
-          reqsToRemove.push({ node });
-          if (left.length > 0) {
-            reqsToAdd.push({ dep, props });
-          }
-        } else {
-          reqs.push({ node, dep, props });
-        }
+        reqs.push({ node, dep, props });
       }
     }
   };

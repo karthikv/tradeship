@@ -171,8 +171,8 @@
     util.inspect({});
     http.createServer();
   expected: |
-    const util = require("util");
     const http = require("http");
+    const util = require("util");
 
     util.inspect({});
     http.createServer();
@@ -298,3 +298,20 @@
     const jsYaml = require("js-yaml");
 
     jsYaml.load();
+
+- name: order
+  input: |
+    const util = require("util");
+    const fs = require("fs");
+
+    util.inspect({});
+    http.createServer();
+    fs.readFile();
+  expected: |
+    const fs = require("fs");
+    const http = require("http");
+    const util = require("util");
+
+    util.inspect({});
+    http.createServer();
+    fs.readFile();
