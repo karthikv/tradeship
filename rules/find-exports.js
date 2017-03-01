@@ -1,15 +1,17 @@
 const { isGlobal, findVariable, getKey } = require("../common");
 
 const exported = {};
+exports.reset = function() {
+  exported.idents = new Set();
+  exported.props = new Set();
+};
+
 exports.retrieve = function() {
   return exported;
 };
 
 exports.create = function(context) {
-  const idents = new Set();
-  const props = new Set();
-  exported.idents = idents;
-  exported.props = props;
+  const { idents, props } = exported;
 
   return {
     AssignmentExpression(node) {
@@ -58,6 +60,7 @@ function parseNames(node) {
       return parseNames(node.property);
 
     case "FunctionExpression":
+    case "ClassExpression":
       return node.id ? parseNames(node.id) : [];
 
     case "NewExpression":
@@ -72,7 +75,7 @@ function parseNames(node) {
 
     // TODO: handle error better
     default:
-      console.log(`Didn't consider parsing name from ${node.type}`);
+      console.error(`Didn't consider parsing name from ${node.type}`);
       return [];
   }
 }

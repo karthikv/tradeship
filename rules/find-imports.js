@@ -3,13 +3,15 @@ const { isGlobal, findVariable, getKey } = require("../common");
 const whiteRegex = /^\s*$/;
 let reqs;
 
+exports.reset = function() {
+  reqs = [];
+};
+
 exports.retrieve = function() {
   return reqs;
 };
 
 exports.create = function(context) {
-  reqs = [];
-
   const sourceCode = context.getSourceCode();
   const sourceByLine = sourceCode.lines.slice(0);
   sourceByLine.unshift("");

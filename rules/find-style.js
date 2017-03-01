@@ -1,4 +1,8 @@
 let style;
+exports.reset = function() {
+  style = {};
+};
+
 exports.retrieve = function() {
   return style;
 };
@@ -6,8 +10,6 @@ exports.retrieve = function() {
 const leadingWhiteRegex = /^\s*/;
 
 exports.create = function(context) {
-  style = {};
-
   const kindFreqs = {};
   const quoteFreqs = {};
   const semiFreqs = {};

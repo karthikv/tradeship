@@ -14,7 +14,9 @@ const importerTests = yaml.safeLoad(importerYAML);
 
 importerTests.forEach(({ name, input, expected }) => {
   test(`importer-${name}`, t => {
-    return importer.run(input).then(actual => t.is(actual, expected));
+    return importer
+      .run(input, __filename)
+      .then(actual => t.is(actual, expected));
   });
 });
 

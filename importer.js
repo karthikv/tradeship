@@ -1,3 +1,5 @@
+const path = require("path");
+
 const { lint } = require("./common");
 const findImports = require("./rules/find-imports");
 const findStyle = require("./rules/find-style");
@@ -5,8 +7,11 @@ const IdentLib = require("./ident-lib");
 
 const undefRegex = /^'(.*?)' is not defined.$/;
 
-exports.run = function(code) {
+exports.run = function(code, filePath) {
   return IdentLib.populate().then(identLib => {
+    findImports.reset();
+    findStyle.reset();
+
     const { violations, sourceCode } = lint(code, {
       "no-undef": "error",
       "find-imports": "error",
@@ -20,7 +25,8 @@ exports.run = function(code) {
       sourceCode,
       reqs,
       missingIdents,
-      identLib
+      identLib,
+      filePath
     });
   });
 };
@@ -38,7 +44,7 @@ function findMissingIdents(violations, identLib) {
     .filter(ident => ident !== null && identLib.search(ident));
 }
 
-function rewriteCode({ sourceCode, reqs, missingIdents, identLib }) {
+function rewriteCode({ sourceCode, reqs, missingIdents, identLib, filePath }) {
   // line numbers are 1-indexed, so add a blank line to make indexing easy
   const sourceByLine = sourceCode.lines.slice(0);
   sourceByLine.unshift("");
@@ -51,7 +57,7 @@ function rewriteCode({ sourceCode, reqs, missingIdents, identLib }) {
   // remove first blank line we artifically introduced
   linesToRemove.add(0);
 
-  const requiresText = composeRequires(libsToAdd);
+  const requiresText = composeRequires(libsToAdd, filePath);
   let addRequiresLine = 0;
   if (reqs.length > 0) {
     addRequiresLine = reqs[0].node.declarations[0].loc.start.line;
@@ -118,14 +124,24 @@ function resolveIdents(missingIdents, identLib, reqs) {
   return { libsToAdd, linesToRemove };
 }
 
-function composeRequires(libs) {
+function composeRequires(libs, filePath) {
   const { kind, quote, semi, tab, trailingComma } = findStyle.retrieve();
   const statements = [];
 
   const deps = Object.keys(libs).sort();
   deps.forEach(dep => {
     const { props, ident } = libs[dep];
-    const requireText = `require(${quote}${dep}${quote})${semi}`;
+
+    let resolvedPath;
+    if (dep.indexOf("/") === -1) {
+      resolvedPath = dep;
+    } else if (filePath) {
+      resolvedPath = path.relative(path.dirname(filePath), dep);
+    } else {
+      // can't perform relative import without knowing file path
+      return;
+    }
+    const requireText = `require(${quote}${resolvedPath}${quote})${semi}`;
 
     if (ident) {
       statements.push(`${kind} ${ident} = ${requireText}`);

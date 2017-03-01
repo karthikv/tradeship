@@ -394,3 +394,35 @@
     util.inspect({});
     http.createServer();
     fs.readFile();
+
+- name: relative
+  input: |
+    new IdentLib();
+  expected: |
+    const IdentLib = require("../ident-lib.js");
+
+    new IdentLib();
+
+- name: relative-prop
+  input: |
+    lint();
+  expected: |
+    const { lint } = require("../common.js");
+
+    lint();
+
+- name: relative-base
+  input: |
+    parser.run()
+  expected: |
+    const parser = require("../parser.js")
+
+    parser.run()
+
+- name: relative-base-recursive
+  input: |
+    findExports.retrieve()
+  expected: |
+    const findExports = require("../rules/find-exports.js")
+
+    findExports.retrieve()
