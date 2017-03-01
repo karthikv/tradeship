@@ -1,9 +1,12 @@
 const { isGlobal, findVariable, getKey } = require("../common");
 
-const exported = {};
+let exported = {};
 exports.reset = function() {
-  exported.idents = new Set();
-  exported.props = new Set();
+  exported = {
+    idents: new Set(),
+    props: new Set(),
+    hasExports: false
+  };
 };
 
 exports.retrieve = function() {
@@ -44,7 +47,18 @@ exports.create = function(context) {
           }
         }
       }
-    }
+    },
+
+    Identifier(node) {
+      if (
+        isGlobal(context, node, "module") || isGlobal(context, node, "exports")
+      ) {
+        setHasExports();
+      }
+    },
+    ExportNamedDeclaration: setHasExports,
+    ExportDefaultDeclaration: setHasExports,
+    ExportAllDeclaration: setHasExports
   };
 };
 
@@ -119,4 +133,8 @@ function parseProps(context, node) {
   }
 
   return [];
+}
+
+function setHasExports() {
+  exported.hasExports = true;
 }

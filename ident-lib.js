@@ -133,9 +133,11 @@ module.exports = class IdentLib {
   static populateFile({ idents, props, filePath }) {
     return readFile(filePath, "utf8").then(code => {
       const exports = parser.run(code);
-      exports.idents.forEach(i => idents[i] = filePath);
-      exports.props.forEach(p => props[p] = filePath);
-      this.populateDepIdents(idents, filePath);
+      if (exports.hasExports) {
+        exports.idents.forEach(i => idents[i] = filePath);
+        exports.props.forEach(p => props[p] = filePath);
+        this.populateDepIdents(idents, filePath);
+      }
     });
   }
 
