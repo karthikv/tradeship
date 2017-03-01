@@ -3,12 +3,12 @@ const path = require("path");
 const { lint } = require("./common");
 const findImports = require("./rules/find-imports");
 const findStyle = require("./rules/find-style");
-const IdentLib = require("./ident-lib");
+const DepRegistry = require("./dep-registry");
 
 const undefRegex = /^'(.*?)' is not defined.$/;
 
 exports.run = function(code, filePath) {
-  return IdentLib.populate().then(identLib => {
+  return DepRegistry.populate().then(depRegistry => {
     findImports.reset();
     findStyle.reset();
 
@@ -19,19 +19,19 @@ exports.run = function(code, filePath) {
     });
 
     const reqs = findImports.retrieve();
-    const missingIdents = findMissingIdents(violations, identLib);
+    const missingIdents = findMissingIdents(violations, depRegistry);
 
     return rewriteCode({
       sourceCode,
       reqs,
       missingIdents,
-      identLib,
+      depRegistry,
       filePath
     });
   });
 };
 
-function findMissingIdents(violations, identLib) {
+function findMissingIdents(violations, depRegistry) {
   return violations
     .filter(v => v.ruleId === "no-undef")
     .map(v => {
@@ -41,17 +41,19 @@ function findMissingIdents(violations, identLib) {
       }
       return null;
     })
-    .filter(ident => ident !== null && identLib.search(ident));
+    .filter(ident => ident !== null && depRegistry.search(ident));
 }
 
-function rewriteCode({ sourceCode, reqs, missingIdents, identLib, filePath }) {
+function rewriteCode(
+  { sourceCode, reqs, missingIdents, depRegistry, filePath }
+) {
   // line numbers are 1-indexed, so add a blank line to make indexing easy
   const sourceByLine = sourceCode.lines.slice(0);
   sourceByLine.unshift("");
 
   const { linesToRemove, libsToAdd } = resolveIdents(
     missingIdents,
-    identLib,
+    depRegistry,
     reqs
   );
   // remove first blank line we artifically introduced
@@ -82,16 +84,16 @@ function rewriteCode({ sourceCode, reqs, missingIdents, identLib, filePath }) {
   return newCode;
 }
 
-function resolveIdents(missingIdents, identLib, reqs) {
-  const results = missingIdents.map(ident => identLib.search(ident));
-  const deps = reqs.map(req => req.dep).concat(results.map(r => r.dep));
+function resolveIdents(missingIdents, depRegistry, reqs) {
+  const deps = missingIdents.map(ident => depRegistry.search(ident));
+  const depIDs = reqs.map(req => req.depID).concat(deps.map(d => d.id));
 
   const libsToAdd = {};
-  deps.forEach(dep => libsToAdd[dep] = { props: [], ident: null });
+  depIDs.forEach(id => libsToAdd[id] = { props: [], ident: null });
 
   missingIdents.forEach((ident, i) => {
-    const { dep, isProp } = results[i];
-    const lib = libsToAdd[dep];
+    const { id, isProp } = deps[i];
+    const lib = libsToAdd[id];
 
     if (isProp) {
       lib.props.push(ident);
@@ -101,8 +103,8 @@ function resolveIdents(missingIdents, identLib, reqs) {
   });
 
   const nodesToRemove = [];
-  reqs.forEach(({ node, dep, props, ident }) => {
-    const lib = libsToAdd[dep];
+  reqs.forEach(({ node, depID, props, ident }) => {
+    const lib = libsToAdd[depID];
     if (ident) {
       lib.ident = ident;
     }

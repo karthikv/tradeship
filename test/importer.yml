@@ -397,11 +397,11 @@
 
 - name: relative
   input: |
-    new IdentLib();
+    new DepRegistry();
   expected: |
-    const IdentLib = require("../ident-lib.js");
+    const DepRegistry = require("../dep-registry.js");
 
-    new IdentLib();
+    new DepRegistry();
 
 - name: relative-prop
   input: |

@@ -43,10 +43,10 @@ exports.create = function(context) {
         return;
       }
 
-      const dep = init.arguments[0].value;
+      const depID = init.arguments[0].value;
       if (id.type === "Identifier") {
         if (isUsed(id, context)) {
-          reqs.push({ node, dep, ident: id.name });
+          reqs.push({ node, depID, ident: id.name });
         } else {
           reqs.push({ node });
         }
@@ -59,7 +59,7 @@ exports.create = function(context) {
       ) {
         const left = id.properties.filter(p => isUsed(p.value, context));
         const props = left.map(p => p.value.name);
-        reqs.push({ node, dep, props });
+        reqs.push({ node, depID, props });
       }
     }
   };
