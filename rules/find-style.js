@@ -1,3 +1,5 @@
+const { isGlobal } = require("../common");
+
 const leadingWhiteRegex = /^\s*/;
 let style;
 
@@ -15,6 +17,7 @@ exports.create = function(context) {
   const semiFreqs = {};
   const tabFreqs = {};
   const trailingCommaFreqs = {};
+  const requireKeywordFreqs = {};
 
   const sourceCode = context.getSourceCode();
   countTabs(sourceCode, tabFreqs);
@@ -82,6 +85,7 @@ exports.create = function(context) {
     ImportDeclaration(node) {
       countSemisNode(node);
       countTrailingCommasNode(node);
+      countRequireKeywords(requireKeywordFreqs, "import");
     },
     ExportNamedDeclaration(node) {
       if (!node.declaration) {
@@ -90,10 +94,17 @@ exports.create = function(context) {
       countTrailingCommasNode(node);
     },
 
+    CallExpression(node) {
+      if (isGlobal(context, node.callee, "require")) {
+        countRequireKeywords(requireKeywordFreqs, "require");
+      }
+    },
+
     "Program:exit"() {
       style.kind = maxKey(kindFreqs) || "const";
       style.quote = maxKey(quoteFreqs) || '"';
       style.tab = maxKey(tabFreqs) || "  ";
+      style.requireKeyword = maxKey(requireKeywordFreqs) || "require";
 
       // empty string is falsy, must explicitly check for null
       style.semi = maxKey(semiFreqs);
@@ -161,6 +172,13 @@ function countTrailingCommas(sourceCode, trailingCommaFreqs, node) {
     trailingCommaFreqs[trailingComma] = 0;
   }
   trailingCommaFreqs[trailingComma]++;
+}
+
+function countRequireKeywords(requireKeywordFreqs, requireKeyword) {
+  if (!requireKeywordFreqs[requireKeyword]) {
+    requireKeywordFreqs[requireKeyword] = 0;
+  }
+  requireKeywordFreqs[requireKeyword]++;
 }
 
 // Taken from: https://github.com/eslint/eslint/blob/a30eb8d19f407643d35f5af8e270c9a150b9d015/lib/rules/comma-dangle.js#L139-160

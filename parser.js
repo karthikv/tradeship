@@ -3,6 +3,13 @@ const findExports = require("./rules/find-exports");
 
 exports.run = function(code) {
   findExports.reset();
-  lint(code, { "find-exports": "error" });
+  const { violations, sourceCode } = lint(code, { "find-exports": "error" });
+
+  // TODO: better printing / error handling?
+  if (!sourceCode) {
+    console.error(violations);
+    throw new Error("couldn't parse code");
+  }
+
   return findExports.retrieve();
 };

@@ -17,6 +17,10 @@ exports.run = function(code, filePath) {
       "find-imports": "error",
       "find-style": "error"
     });
+    if (!sourceCode) {
+      console.error(violations);
+      throw new Error("couldn't parse code");
+    }
 
     const reqs = findImports.retrieve();
     const missingIdents = findMissingIdents(violations, depRegistry);
@@ -62,7 +66,7 @@ function rewriteCode(
   const requiresText = composeRequires(libsToAdd, filePath);
   let addRequiresLine = 0;
   if (reqs.length > 0) {
-    addRequiresLine = reqs[0].node.declarations[0].loc.start.line;
+    addRequiresLine = reqs[0].node.loc.start.line;
   }
 
   let newCode = "";
@@ -89,30 +93,49 @@ function resolveIdents(missingIdents, depRegistry, reqs) {
   const depIDs = reqs.map(req => req.depID).concat(deps.map(d => d.id));
 
   const libsToAdd = {};
-  depIDs.forEach(id => libsToAdd[id] = { props: [], ident: null });
+  depIDs.forEach(
+    id => libsToAdd[id] = {
+      idents: [],
+      defaults: [],
+      props: []
+    }
+  );
 
+  const { types } = DepRegistry;
   missingIdents.forEach((ident, i) => {
-    const { id, isProp } = deps[i];
+    const { id, type } = deps[i];
     const lib = libsToAdd[id];
 
-    if (isProp) {
-      lib.props.push(ident);
-    } else {
-      lib.ident = ident;
+    switch (type) {
+      case types.ident:
+        lib.idents.push(ident);
+        break;
+      case types.default:
+        lib.defaults.push(ident);
+        break;
+      case types.prop:
+        lib.props.push(ident);
+        break;
+      default:
+        throw new Error("unexpected type " + type);
     }
   });
 
   const nodesToRemove = [];
-  reqs.forEach(({ node, depID, props, ident }) => {
+  reqs.forEach(({ node, depID, idents, defaults, props }) => {
     const lib = libsToAdd[depID];
-    if (ident) {
-      lib.ident = ident;
+
+    if (node) {
+      nodesToRemove.push(node);
+    }
+    if (idents) {
+      lib.idents.push(...idents);
+    }
+    if (defaults) {
+      lib.defaults.push(...defaults);
     }
     if (props) {
       lib.props.push(...props);
-    }
-    if (node) {
-      nodesToRemove.push(node);
     }
   });
 
@@ -127,39 +150,127 @@ function resolveIdents(missingIdents, depRegistry, reqs) {
 }
 
 function composeRequires(libs, filePath) {
-  const { kind, quote, semi, tab, trailingComma } = findStyle.retrieve();
+  const style = findStyle.retrieve();
   const statements = [];
 
-  const deps = Object.keys(libs).sort();
-  deps.forEach(dep => {
-    const { props, ident } = libs[dep];
+  const depIDs = Object.keys(libs).sort();
+  depIDs.forEach(depID => {
+    const { idents, defaults, props } = libs[depID];
 
-    let resolvedPath;
-    if (dep.indexOf("/") === -1) {
-      resolvedPath = dep;
+    if (idents.length === 0 && defaults.length === 0 && props.length === 0) {
+      // nothing to require
+      return;
+    }
+
+    let id;
+    // TODO: namespaced imports
+    if (depID.indexOf("/") === -1) {
+      id = depID;
     } else if (filePath) {
-      resolvedPath = path.relative(path.dirname(filePath), dep);
+      id = path.relative(path.dirname(filePath), depID);
     } else {
       // can't perform relative import without knowing file path
       return;
     }
-    const requireText = `require(${quote}${resolvedPath}${quote})${semi}`;
 
-    if (ident) {
-      statements.push(`${kind} ${ident} = ${requireText}`);
-    }
-    if (props.length > 0) {
-      let statement = `${kind} { ${props.join(", ")} } = ${requireText}`;
+    if (style.requireKeyword === "require") {
+      statements.push(
+        ...idents.map(ident => composeRequireStatement({ style, id, ident })),
+        ...defaults.map(def => composeRequireStatement({ style, id, def }))
+      );
 
-      // TODO: line length?
-      if (statement.length > 80) {
-        const propsText = tab + props.join(`,\n${tab}`) + trailingComma;
-        statement = `${kind} {\n${propsText}\n} = ${requireText}`;
+      if (props.length > 0) {
+        statements.push(composeRequireStatement({ style, id, props }));
       }
-
-      statements.push(statement);
+    } else {
+      statements.push(
+        composeImportStatement({
+          style,
+          id,
+          props,
+          ident: idents[0],
+          def: defaults[0]
+        }),
+        ...idents
+          .slice(1)
+          .map((ident, i) =>
+            composeImportStatement({ style, id, ident, def: defaults[i + 1] })),
+        ...defaults
+          .slice(Math.max(idents.length, 1))
+          .map(def => composeImportStatement({ style, id, def }))
+      );
     }
   });
 
   return statements.join("\n");
+}
+
+function composeRequireStatement({ style, id, ident, def, props, multiline }) {
+  if (ident && def || ident && props || def && props) {
+    throw new Error("only one of ident, default, and props must be specified");
+  }
+
+  const { kind, quote, semi } = style;
+  const requireText = `require(${quote}${id}${quote})`;
+
+  if (ident) {
+    return `${kind} ${ident} = ${requireText}${semi}`;
+  } else if (def) {
+    // TODO: detect this in reqs
+    return `${kind} ${ident} = ${requireText}.default${semi}`;
+  } else {
+    const destructure = composeDestructure(style, props, multiline);
+    const statement = `${kind} ${destructure} = ${requireText}${semi}`;
+
+    // TODO: line length style
+    if (!multiline && statement.length > 80) {
+      return composeRequireStatement({
+        style,
+        id,
+        props,
+        multiline: true
+      });
+    }
+    return statement;
+  }
+}
+
+function composeImportStatement({ style, id, ident, def, props, multiline }) {
+  const parts = [];
+  if (def) {
+    parts.push(def);
+  }
+  if (ident) {
+    parts.push(`* as ${ident}`);
+  }
+  if (props && props.length > 0) {
+    parts.push(composeDestructure(style, props, multiline));
+  }
+
+  const { quote, semi } = style;
+  const names = parts.join(", ");
+  const statement = `import ${names} from ${quote}${id}${quote}${semi}`;
+
+  if (props && !multiline && statement.length > 80) {
+    return composeImportStatement({
+      style,
+      id,
+      ident,
+      def,
+      props,
+      multiline: true
+    });
+  }
+  return statement;
+}
+
+function composeDestructure(style, props, multiline) {
+  if (multiline) {
+    const { tab, trailingComma } = style;
+    const propsText = tab + props.join(`,\n${tab}`) + trailingComma;
+    return `{\n${propsText}\n}`;
+  } else {
+    // TODO: space inside braces style
+    return `{ ${props.join(", ")} }`;
+  }
 }

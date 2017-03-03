@@ -57,17 +57,17 @@ exports.promisify = (fn, context) => {
 
 exports.isGlobal = function(context, node, name) {
   if (node.type === "Identifier" && node.name === name) {
-    const variable = exports.findVariable(context, name);
+    const variable = exports.findVariable(context, node);
     return variable && variable.scope.type === "global";
   }
   return false;
 };
 
-exports.findVariable = function(context, name) {
+exports.findVariable = function(context, node) {
   let scope = context.getScope();
 
   do {
-    const variable = scope.set.get(name);
+    const variable = scope.set.get(node.name);
     if (variable) {
       return variable;
     }

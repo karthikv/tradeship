@@ -5,7 +5,8 @@
   "devDependencies": {
     "ava": "^0.18.1",
     "js-yaml": "^3.8.1",
-    "prettier": "^0.17.1"
+    "prettier": "^0.17.1",
+    "rollup": "^0.41.4"
   },
   "scripts": {
     "test": "ava test/runner.js"

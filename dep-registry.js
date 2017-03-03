@@ -13,9 +13,13 @@ const stat = promisify(fs.stat);
 const writeFile = promisify(fs.writeFile);
 
 const identRegex = /^[$a-z_][0-9a-z_$]*$/i;
-const propsScript = new vm.Script("props = Object.keys(require(id));");
+const propsScript = new vm.Script(
+  "const object = require(id);" +
+    "props = Object.keys(object);" +
+    "hasDefault = Boolean(object.__esModule) && Boolean(object.default);"
+);
 
-module.exports = class DepRegistry {
+class DepRegistry {
   /* public interface */
 
   static populate() {
@@ -58,7 +62,7 @@ module.exports = class DepRegistry {
           const entry = this.register(cache, id, process.version);
           if (entry) {
             this.populateIdents(entry, id);
-            this.populateProps(entry, id);
+            this.populatePropsDefaults(entry, id);
           }
         });
 
@@ -72,7 +76,10 @@ module.exports = class DepRegistry {
           const entry = this.register(cache, id, dependencies[id]);
           if (entry) {
             this.populateIdents(entry, id);
-            this.populateProps(entry, path.join(this.dir, "node_modules", id));
+            this.populatePropsDefaults(
+              entry,
+              path.join(this.dir, "node_modules", id)
+            );
           }
         }
 
@@ -158,12 +165,23 @@ module.exports = class DepRegistry {
     }
   }
 
-  populateProps(entry, id) {
+  populatePropsDefaults(entry, id) {
     // extract props of this dep by running Object.keys() in a V8 VM
     const context = { require, id };
-    propsScript.runInNewContext(context);
+
+    try {
+      propsScript.runInNewContext(context);
+    } catch (e) {
+      // ignore errors from requiring this dep; we just won't populate props
+    }
+
     if (context.props) {
       context.props.forEach(p => entry.props.push(p));
+    }
+    if (context.hasDefault) {
+      // assume all idents are actually defaults
+      entry.idents.forEach(i => entry.defaults.push(i));
+      entry.idents = [];
     }
   }
 
@@ -202,8 +220,19 @@ module.exports = class DepRegistry {
       const exports = parser.run(code);
       if (exports.hasExports) {
         exports.idents.forEach(i => entry.idents.push(i));
+        exports.defaults.forEach(d => entry.defaults.push(d));
         exports.props.forEach(p => entry.props.push(p));
         this.populateIdents(entry, filePath);
+
+        if (entry.defaults.length > 0) {
+          // assume all idents are actually defaults
+          entry.idents.forEach(i => {
+            if (entry.defaults.indexOf(i) === -1) {
+              entry.defaults.push(i);
+            }
+          });
+          entry.idents = [];
+        }
       }
     });
   }
@@ -214,6 +243,7 @@ module.exports = class DepRegistry {
       const entry = {
         version,
         idents: [],
+        defaults: [],
         props: []
       };
       this.registry[id] = entry;
@@ -234,6 +264,7 @@ module.exports = class DepRegistry {
       if (node[id]) {
         // node library; lowest priority
         priority = 3;
+        // TODO: namespaced deps
       } else if (id.indexOf("/") === -1) {
         // project file; highest priority
         priority = 1;
@@ -242,23 +273,46 @@ module.exports = class DepRegistry {
         priority = 2;
       }
 
-      const { idents, props } = this.registry[id];
-      idents.forEach(name =>
-        this.associate({ name, id, priority, isProp: false }));
-      props.forEach(name =>
-        this.associate({ name, id, priority, isProp: true }));
+      const { idents, defaults, props } = this.registry[id];
+      idents.forEach(name => this.associate({
+        name,
+        id,
+        priority,
+        type: types.ident
+      }));
+      defaults.forEach(name => this.associate({
+        name,
+        id,
+        priority,
+        type: types.default
+      }));
+      props.forEach(name => this.associate({
+        name,
+        id,
+        priority,
+        type: types.prop
+      }));
     }
   }
 
-  associate({ name, id, priority, isProp }) {
+  associate({ name, id, priority, type }) {
     const dep = this.deps[name];
     if (
       !dep ||
-      // idents are prioritized over props
-      dep.isProp && !isProp ||
-      dep.isProp === isProp && dep.priority < priority
+      dep.priority < priority ||
+      // idents and defaults are prioritized over props
+      dep.type === types.prop && type !== types.prop
     ) {
-      this.deps[name] = { id, priority, isProp };
+      this.deps[name] = { id, priority, type };
     }
   }
+}
+
+DepRegistry.types = {
+  ident: 1,
+  default: 2,
+  prop: 3
 };
+const types = DepRegistry.types;
+
+module.exports = DepRegistry;

@@ -177,6 +177,14 @@
     util.inspect({});
     http.createServer();
 
+- name: keep-rewrite
+  input: |
+    let fs = require("fs");
+    fs = {};
+  expected: |
+    let fs = require("fs");
+    fs = {};
+
 - name: keep-multiple-declarators
   input: |
     const fs = require("fs"), util = require("util");
@@ -245,7 +253,7 @@
     readFileSync();
     readdirSync();
     createReadStream();
-    
+
     if (true) {
         createWriteStream();
     }
@@ -260,7 +268,7 @@
     readFileSync();
     readdirSync();
     createReadStream();
-    
+
     if (true) {
         createWriteStream();
     }
@@ -270,7 +278,7 @@
     readFileSync();
     readdirSync();
     createReadStream();
-    
+
     if (true) {
     	createWriteStream();
     }
@@ -285,7 +293,7 @@
     readFileSync();
     readdirSync();
     createReadStream();
-    
+
     if (true) {
     	createWriteStream();
     }
@@ -426,3 +434,84 @@
     const findExports = require("../rules/find-exports.js")
 
     findExports.retrieve()
+
+- name: import-ident
+  input: |
+    import * as fs from "fs";
+
+    fs.readFile();
+    util.inspect({});
+  expected: |
+    import * as fs from "fs";
+    import * as util from "util";
+
+    fs.readFile();
+    util.inspect({});
+
+- name: import-default
+  input: |
+    import * as fs from "fs";
+
+    fs.readFile();
+    console.log(example);
+  expected: |
+    import example from "../fixtures/example.js";
+    import * as fs from "fs";
+
+    fs.readFile();
+    console.log(example);
+
+- name: import-prop
+  input: |
+    import * as fs from "fs";
+
+    fs.readFile();
+    inspect({});
+  expected: |
+    import * as fs from "fs";
+    import { inspect } from "util";
+
+    fs.readFile();
+    inspect({});
+
+- name: import-ident-prop
+  input: |
+    import * as fs from "fs";
+
+    fs.readFile();
+    util.inspect();
+    inherits();
+  expected: |
+    import * as fs from "fs";
+    import * as util, { inherits } from "util";
+
+    fs.readFile();
+    util.inspect();
+    inherits();
+
+- name: import-default-prop
+  input: |
+    import * as fs from "fs";
+
+    fs.readFile();
+    example.inspect();
+    prop();
+  expected: |
+    import example, { prop } from "../fixtures/example.js";
+    import * as fs from "fs";
+
+    fs.readFile();
+    example.inspect();
+    prop();
+
+- name: import-remove
+  input: |
+    import * as fs from "fs";
+    import { inspect, inherits } from "util";
+    import example from "../fixtures/example.js";
+
+    inspect({});
+  expected: |
+    import { inspect } from "util";
+
+    inspect({});

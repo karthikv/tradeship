@@ -3,7 +3,9 @@ const { isGlobal, findVariable, getKey } = require("../common");
 let exported = {};
 exports.reset = function() {
   exported = {
+    // TODO: duplicate values?
     idents: new Set(),
+    defaults: new Set(),
     props: new Set(),
     hasExports: false
   };
@@ -14,7 +16,7 @@ exports.retrieve = function() {
 };
 
 exports.create = function(context) {
-  const { idents, props } = exported;
+  const { idents, defaults, props } = exported;
 
   return {
     AssignmentExpression(node) {
@@ -26,7 +28,12 @@ exports.create = function(context) {
           isGlobal(context, object, "module") && getKey(property) === "exports"
         ) {
           parseNames(right).forEach(n => idents.add(n));
-          parseProps(context, right).forEach(p => props.add(p));
+          const { props: newProps, defaults: newDefaults } = parsePropsDefaults(
+            context,
+            right
+          );
+          newProps.forEach(p => props.add(p));
+          newDefaults.forEach(d => defaults.add(d));
 
           let parent = node.parent;
           while (parent.type === "AssignmentExpression") {
@@ -42,7 +49,9 @@ exports.create = function(context) {
           isGlobal(context, object, "exports")
         ) {
           const key = getKey(property);
-          if (key) {
+          if (key === "default") {
+            parseNames(right).forEach(n => defaults.add(n));
+          } else {
             props.add(key);
           }
         }
@@ -53,12 +62,35 @@ exports.create = function(context) {
       if (
         isGlobal(context, node, "module") || isGlobal(context, node, "exports")
       ) {
-        setHasExports();
+        exported.hasExports = true;
       }
     },
-    ExportNamedDeclaration: setHasExports,
-    ExportDefaultDeclaration: setHasExports,
-    ExportAllDeclaration: setHasExports
+
+    ExportNamedDeclaration(node) {
+      exported.hasExports = true;
+
+      if (node.declaration) {
+        parseNames(node.declaration).forEach(n => props.add(n));
+      }
+      if (node.specifiers) {
+        node.specifiers.forEach(s => {
+          if (s.exported.name === "default") {
+            defaults.add(s.local.name);
+          } else {
+            props.add(s.exported.name);
+          }
+        });
+      }
+    },
+
+    ExportDefaultDeclaration(node) {
+      exported.hasExports = true;
+      parseNames(node.declaration).forEach(n => defaults.add(n));
+    },
+
+    ExportAllDeclaration() {
+      exported.hasExports = true;
+    }
   };
 };
 
@@ -74,11 +106,19 @@ function parseNames(node) {
       return parseNames(node.property);
 
     case "FunctionExpression":
+    case "FunctionDeclaration":
     case "ClassExpression":
+    case "ClassDeclaration":
       return node.id ? parseNames(node.id) : [];
 
     case "NewExpression":
       return parseNames(node.callee);
+
+    case "VariableDeclaration":
+      return node.declarations.reduce(
+        (names, d) => names.concat(parseNames(d.id)),
+        []
+      );
 
     // can't deduce a name from these nodes
     case "ArrowFunctionExpression":
@@ -94,23 +134,27 @@ function parseNames(node) {
   }
 }
 
-function parseProps(context, node) {
-  if (node.type === "ObjectExpression") {
-    return node.properties
-      .map(p => {
-        if (p.key.type === "Identifier") {
-          return p.key.name;
-        }
-        return null;
-      })
-      .filter(p => p !== null);
-  } else if (node.type === "Identifier") {
-    const variable = findVariable(context, node.name);
-    let props = [];
+function parsePropsDefaults(context, node) {
+  let props = new Set();
+  let defaults = new Set();
 
+  if (node.type === "ObjectExpression") {
+    node.properties.forEach(p => {
+      if (p.key.type === "Identifier") {
+        if (p.key.name === "default") {
+          parseNames(p.value).forEach(n => defaults.add(n));
+        } else {
+          props.add(p.key.name);
+        }
+      }
+    });
+  } else if (node.type === "Identifier") {
+    const variable = findVariable(context, node);
+
+    // TODO: looping in right order?
     variable.references.forEach(ref => {
       if (ref.writeExpr) {
-        props = parseProps(context, ref.writeExpr);
+        ({ props, defaults } = parsePropsDefaults(context, ref.writeExpr));
       } else {
         const ident = ref.identifier;
         if (
@@ -122,19 +166,15 @@ function parseProps(context, node) {
           ident.parent.parent.left === ident.parent
         ) {
           const key = getKey(ident.parent.property);
-          if (key) {
-            props.push(key);
+          if (key === "default") {
+            parseNames(ident.parent.right).forEach(n => defaults.add(n));
+          } else {
+            props.add(key);
           }
         }
       }
     });
-
-    return props;
   }
 
-  return [];
-}
-
-function setHasExports() {
-  exported.hasExports = true;
+  return { props, defaults };
 }

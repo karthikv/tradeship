@@ -92,3 +92,50 @@
     module.exports = y;
   idents: [y]
   props: [d]
+
+- name: assign-default
+  input: |
+    const x = 3
+    exports.default = x
+    module.exports.default = function foo() {}
+  defaults: [x, foo]
+
+- name: export-default
+  input: |
+    const x = 3;
+    export default x;
+  defaults: [x]
+
+- name: export-default-literal
+  input: |
+    export default "str";
+
+- name: export-default-fn
+  input: |
+    export default function foo() {}
+  defaults: [foo]
+
+- name: export-default-class
+  input: |
+    export default class Foo {}
+  defaults: [Foo]
+
+- name: export-as-default
+  input: |
+    const x = 5
+    export { x as default }
+  defaults: [x]
+
+- name: export-named
+  input: |
+    export const a = 3, b = 4
+    export function c() {}
+    export let d, e = true
+
+    const f = true
+    const str = "str"
+    const h = 3.1
+    export { f, str as g, h }
+
+    export class I {}
+  props: [a, b, c, d, e, f, g, h, I]
