@@ -237,10 +237,10 @@
     createWriteStream();
   expected: |
     const {
-      readFileSync,
-      readdirSync,
       createReadStream,
-      createWriteStream
+      createWriteStream,
+      readFileSync,
+      readdirSync
     } = require("fs");
 
     readFileSync();
@@ -259,10 +259,10 @@
     }
   expected: |
     const {
-        readFileSync,
-        readdirSync,
         createReadStream,
-        createWriteStream
+        createWriteStream,
+        readFileSync,
+        readdirSync
     } = require("fs");
 
     readFileSync();
@@ -284,10 +284,10 @@
     }
   expected: |
     const {
-    	readFileSync,
-    	readdirSync,
     	createReadStream,
-    	createWriteStream
+    	createWriteStream,
+    	readFileSync,
+    	readdirSync
     } = require("fs");
 
     readFileSync();
@@ -311,10 +311,10 @@
     })
   expected: |
     const {
-      readFileSync,
-      readdirSync,
       createReadStream,
       createWriteStream,
+      readFileSync,
+      readdirSync,
     } = require("fs");
 
     readFileSync();

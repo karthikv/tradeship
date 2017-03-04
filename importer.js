@@ -162,6 +162,10 @@ function composeRequires(libs, filePath) {
       return;
     }
 
+    idents.sort();
+    defaults.sort();
+    props.sort();
+
     let id;
     // TODO: namespaced imports
     if (depID.indexOf("/") === -1) {
