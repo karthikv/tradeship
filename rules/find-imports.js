@@ -35,25 +35,39 @@ exports.create = function(context) {
       }
 
       const { init, id } = node.declarations[0];
+
+      // might be require().default
+      let call = init;
+      let isDefault = false;
       if (
-        init.type !== "CallExpression" ||
-        !isGlobal(context, init.callee, "require") ||
-        init.arguments.length !== 1 ||
-        init.arguments[0].type !== "Literal" ||
-        typeof init.arguments[0].value !== "string"
+        init.type === "MemberExpression" && getKey(init.property) === "default"
+      ) {
+        isDefault = true;
+        call = init.object;
+      }
+
+      if (
+        call.type !== "CallExpression" ||
+        !isGlobal(context, call.callee, "require") ||
+        call.arguments.length !== 1 ||
+        call.arguments[0].type !== "Literal" ||
+        typeof call.arguments[0].value !== "string"
       ) {
         return;
       }
 
-      const depID = init.arguments[0].value;
+      const depID = call.arguments[0].value;
       if (id.type === "Identifier") {
-        allReqs.push({ node, depID, identVars: [findVariable(context, id)] });
+        const varsKey = isDefault ? "defaultVars" : "identVars";
+        allReqs.push({ node, depID, [varsKey]: [findVariable(context, id)] });
       } else if (
         id.type === "ObjectPattern" &&
         // TODO: what about aliases?
         id.properties.every(
           p => p.value.type === "Identifier" && getKey(p.key) === p.value.name
-        )
+        ) &&
+        // we don't support destructuring the default
+        !isDefault
       ) {
         const propVars = id.properties.map(p => findVariable(context, p.value));
         allReqs.push({ node, depID, propVars });

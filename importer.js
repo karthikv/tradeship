@@ -23,8 +23,14 @@ exports.run = function(code, filePath) {
     }
 
     const reqs = findImports.retrieve();
-    const missingIdents = findMissingIdents(violations, depRegistry);
+    // resolve all relative dependency paths
+    reqs.forEach(req => {
+      if (!pkgRegex.test(req.depID) && filePath) {
+        req.depID = path.resolve(path.basename(filePath), req.depID);
+      }
+    });
 
+    const missingIdents = findMissingIdents(violations, depRegistry);
     return rewriteCode({
       sourceCode,
       reqs,
@@ -219,8 +225,7 @@ function composeRequireStatement({ style, id, ident, def, props, multiline }) {
   if (ident) {
     return `${kind} ${ident} = ${requireText}${semi}`;
   } else if (def) {
-    // TODO: detect this in reqs
-    return `${kind} ${ident} = ${requireText}.default${semi}`;
+    return `${kind} ${def} = ${requireText}.default${semi}`;
   } else {
     const destructure = composeDestructure(style, props, multiline);
     const statement = `${kind} ${destructure} = ${requireText}${semi}`;

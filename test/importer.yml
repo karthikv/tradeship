@@ -177,6 +177,16 @@
     util.inspect({});
     http.createServer();
 
+- name: remove-namespaced
+  input: |
+    const JsonFile = require("@exponent/json-file");
+  expected: "\n"
+
+- name: remove-default
+  input: |
+    const example = require("../fixtures/example.js").default;
+  expected: "\n"
+
 - name: keep-rewrite
   input: |
     let fs = require("fs");
@@ -219,6 +229,22 @@
     const JsonFile = require("@exponent/json-file");
     new JsonFile();
 
+- name: keep-relative
+  input: |
+    const DepRegistry = require("../dep-registry.js");
+    new DepRegistry();
+  expected: |
+    const DepRegistry = require("../dep-registry.js");
+    new DepRegistry();
+
+- name: keep-default
+  input: |
+    const stub = require("stub").default;
+    console.log(stub);
+  expected: |
+    const stub = require("stub").default;
+    console.log(stub);
+
 - name: multi-ident
   input: |
     child_process.exec();
@@ -229,6 +255,14 @@
 
     child_process.exec();
     childProcess.spawn();
+
+- name: default
+  input: |
+    console.log(example);
+  expected: |
+    const example = require("../fixtures/example.js").default;
+
+    console.log(example);
 
 - name: prop
   input: |
