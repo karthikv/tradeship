@@ -57,7 +57,6 @@ class DepRegistry {
       .findPkgMeta()
       .then(() => this.readCache())
       .then(cache => {
-        // TODO: should we get props for standard libraries?
         repl._builtinLibs.forEach(id => {
           const entry = this.register(cache, id, process.version);
           if (entry) {
@@ -239,7 +238,6 @@ class DepRegistry {
 
   register(cache, id, version) {
     if (!cache[id] || cache[id].version !== version) {
-      // TODO: notify user?
       const entry = {
         version,
         idents: [],

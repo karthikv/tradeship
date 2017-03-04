@@ -62,7 +62,6 @@ exports.create = function(context) {
 
     ImportDeclaration(node) {
       const depID = node.source.value;
-      // TODO: can't check idents/defaults/props truthiness
       const req = {
         node,
         depID,

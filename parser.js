@@ -5,6 +5,7 @@ exports.run = function(code) {
   findExports.reset();
   const { violations, sourceCode } = lint(code, { "find-exports": "error" });
 
+  // TODO: skip if error while parsing other files
   // TODO: better printing / error handling?
   if (!sourceCode) {
     console.error(violations);

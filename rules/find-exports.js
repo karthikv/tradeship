@@ -1,9 +1,9 @@
+/* eslint no-console: ["error", { allow: ["error"] }] */
 const { isGlobal, findVariable, getKey } = require("../common");
 
 let exported = {};
 exports.reset = function() {
   exported = {
-    // TODO: duplicate values?
     idents: new Set(),
     defaults: new Set(),
     props: new Set(),
@@ -127,7 +127,6 @@ function parseNames(node) {
     case "Literal":
       return [];
 
-    // TODO: handle error better
     default:
       console.error(`Didn't consider parsing name from ${node.type}`);
       return [];
