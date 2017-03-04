@@ -211,6 +211,14 @@
     const fs = require("fs"); const x = 3;
     const util = require("util"); // some comment
 
+- name: keep-namespaced
+  input: |
+    const JsonFile = require("@exponent/json-file");
+    new JsonFile();
+  expected: |
+    const JsonFile = require("@exponent/json-file");
+    new JsonFile();
+
 - name: multi-ident
   input: |
     child_process.exec();
@@ -397,6 +405,14 @@
 
     jsYaml.load();
 
+- name: dependency-namespaced
+  input: |
+    new JsonFile();
+  expected: |
+    const JsonFile = require("@exponent/json-file");
+
+    new JsonFile();
+
 - name: order
   input: |
     const util = require("util");
@@ -542,3 +558,16 @@
     fs.readFile();
     child_process.exec();
     childProcess.spawn();
+
+- name: import-namespaced
+  input: |
+    import * as fs from "fs";
+
+    fs.readFile();
+    new JsonFile();
+  expected: |
+    import * as JsonFile from "@exponent/json-file";
+    import * as fs from "fs";
+
+    fs.readFile();
+    new JsonFile();

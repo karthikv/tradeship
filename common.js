@@ -89,3 +89,5 @@ exports.getKey = function(node) {
       return null;
   }
 };
+
+exports.pkgRegex = /^(@[\w\.\-]+\/)?[\w\.\-]+$/;

@@ -6,7 +6,7 @@ const os = require("os");
 const crypto = require("crypto");
 
 const parser = require("./parser");
-const { promisify } = require("./common");
+const { promisify, pkgRegex } = require("./common");
 const readFile = promisify(fs.readFile);
 const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
@@ -140,6 +140,8 @@ class DepRegistry {
     let base;
     if (id.indexOf("/") === -1) {
       base = id;
+    } else if (pkgRegex.test(id)) {
+      base = path.basename(id);
     } else {
       base = path.basename(id, path.extname(id));
     }
@@ -262,8 +264,7 @@ class DepRegistry {
       if (node[id]) {
         // node library; lowest priority
         priority = 3;
-        // TODO: namespaced deps
-      } else if (id.indexOf("/") === -1) {
+      } else if (pkgRegex.test(id)) {
         // project file; highest priority
         priority = 1;
       } else {

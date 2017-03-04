@@ -1,6 +1,6 @@
 const path = require("path");
 
-const { lint } = require("./common");
+const { lint, pkgRegex } = require("./common");
 const findImports = require("./rules/find-imports");
 const findStyle = require("./rules/find-style");
 const DepRegistry = require("./dep-registry");
@@ -167,8 +167,7 @@ function composeRequires(libs, filePath) {
     props.sort();
 
     let id;
-    // TODO: namespaced imports
-    if (depID.indexOf("/") === -1) {
+    if (pkgRegex.test(depID)) {
       id = depID;
     } else if (filePath) {
       id = path.relative(path.dirname(filePath), depID);
