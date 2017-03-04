@@ -211,6 +211,17 @@
     const fs = require("fs"); const x = 3;
     const util = require("util"); // some comment
 
+- name: multi-ident
+  input: |
+    child_process.exec();
+    childProcess.spawn();
+  expected: |
+    const childProcess = require("child_process");
+    const child_process = require("child_process");
+
+    child_process.exec();
+    childProcess.spawn();
+
 - name: prop
   input: |
     readFile();
@@ -494,14 +505,14 @@
     import * as fs from "fs";
 
     fs.readFile();
-    example.inspect();
+    console.log(example);
     prop();
   expected: |
     import example, { prop } from "../fixtures/example.js";
     import * as fs from "fs";
 
     fs.readFile();
-    example.inspect();
+    console.log(example);
     prop();
 
 - name: import-remove
@@ -515,3 +526,19 @@
     import { inspect } from "util";
 
     inspect({});
+
+- name: import-multi-ident
+  input: |
+    import * as fs from "fs";
+
+    fs.readFile();
+    child_process.exec();
+    childProcess.spawn();
+  expected: |
+    import * as childProcess from "child_process";
+    import * as child_process from "child_process";
+    import * as fs from "fs";
+
+    fs.readFile();
+    child_process.exec();
+    childProcess.spawn();

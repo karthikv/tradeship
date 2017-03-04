@@ -150,7 +150,7 @@ class DepRegistry {
     }
 
     const camelCase = base
-      .split(/\W+/g)
+      .split(/[\W_]+/g)
       .filter(p => p !== "")
       .map((p, i) => i === 0 ? p : p[0].toUpperCase() + p.slice(1))
       .join("");
