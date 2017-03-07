@@ -259,7 +259,6 @@ function composeRequireStatement({ style, id, ident, def, props, multiline }) {
     const destructure = composeDestructure(style, props, multiline);
     const statement = `${kind} ${destructure} = ${requireText}${semi}`;
 
-    // TODO: line length style
     if (!multiline && statement.length > 80) {
       return composeRequireStatement({
         style,
@@ -307,7 +306,6 @@ function composeDestructure(style, props, multiline) {
     const propsText = tab + props.join(`,\n${tab}`) + trailingComma;
     return `{\n${propsText}\n}`;
   } else {
-    // TODO: space inside braces style
     return `{ ${props.join(", ")} }`;
   }
 }

@@ -72,7 +72,6 @@ exports.create = function(context) {
         allReqs.push({ node, depID, [varsKey]: [findVariable(context, id)] });
       } else if (
         id.type === "ObjectPattern" &&
-        // TODO: what about aliases?
         id.properties.every(
           p => p.value.type === "Identifier" && getKey(p.key) === p.value.name
         ) &&
@@ -98,7 +97,6 @@ exports.create = function(context) {
       node.specifiers.forEach(s => {
         switch (s.type) {
           case "ImportSpecifier":
-            // TODO: aliases?
             if (s.imported === s.local) {
               req.propVars.push(findVariable(context, s.local));
             } else {
