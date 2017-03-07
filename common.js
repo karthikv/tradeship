@@ -61,6 +61,7 @@ exports.promisify = (fn, context) => {
 exports.readFile = exports.promisify(fs.readFile, fs);
 exports.writeFile = exports.promisify(fs.writeFile, fs);
 exports.stat = exports.promisify(fs.stat, fs);
+exports.readdir = exports.promisify(fs.readdir, fs);
 
 exports.isGlobal = function(context, node, name) {
   if (node.type === "Identifier" && node.name === name) {

@@ -8,11 +8,7 @@ const crypto = require("crypto");
 const { NodeVM, VMScript } = require("vm2");
 
 const parser = require("./parser");
-const { promisify, pkgRegex } = require("./common");
-const readFile = promisify(fs.readFile);
-const readdir = promisify(fs.readdir);
-const stat = promisify(fs.stat);
-const writeFile = promisify(fs.writeFile);
+const { readFile, writeFile, stat, readdir, pkgRegex } = require("./common");
 
 const identRegex = /^[$a-z_][0-9a-z_$]*$/i;
 const propsScript = new VMScript(

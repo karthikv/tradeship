@@ -7,7 +7,6 @@ const codeFrame = require("babel-code-frame");
 
 const importer = require("./importer");
 const { readFile, writeFile, stat } = require("./common");
-// TODO move common promisifys to common.js
 
 const args = process.argv.slice(2);
 const options = {
