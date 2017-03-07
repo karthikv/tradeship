@@ -15,11 +15,19 @@ const importerYAML = fs.readFileSync(
 );
 const importerTests = yaml.safeLoad(importerYAML);
 
-test("cli-help", t =>
-  cli(["-h"]).then(([, stderr]) => t.regex(stderr, /Usage:/)));
+test("cli-help", t => {
+  return cli(["-h"]).then(({ stderr, code }) => {
+    t.regex(stderr, /Usage:/);
+    t.is(code, 0);
+  });
+});
 
-test("cli-version", t =>
-  cli(["-v"]).then(([, stderr]) => t.regex(stderr, /\d+\.\d+\.\d+/)));
+test("cli-version", t => {
+  return cli(["-v"]).then(({ stderr, code }) => {
+    t.regex(stderr, /\d+\.\d+\.\d+/);
+    t.is(code, 0);
+  });
+});
 
 test("cli-path", t => {
   const { input, expected } = importerTests.find(
@@ -27,9 +35,12 @@ test("cli-path", t => {
   );
   const inputPath = path.join(os.tmpdir(), "test-cli-path.js");
 
-  return writeFile(inputPath, input)
-    .then(() => cli([inputPath]))
-    .then(([stdout]) => t.is(stdout, expected));
+  return writeFile(inputPath, input).then(() => cli([inputPath])).then((
+    { stdout, code }
+  ) => {
+    t.is(stdout, expected);
+    t.is(code, 0);
+  });
 });
 
 test("cli-write", t => {
@@ -38,8 +49,9 @@ test("cli-write", t => {
 
   return writeFile(inputPath, input)
     .then(() => cli(["-w", inputPath]))
-    .then(([stdout]) => {
+    .then(({ stdout, code }) => {
       t.is(stdout, "");
+      t.is(code, 0);
       return readFile(inputPath, "utf8");
     })
     .then(actual => t.is(actual, expected));
@@ -49,8 +61,10 @@ test("cli-stdin", t => {
   const { input, expected } = importerTests.find(
     t => t.name === "import-default-prop"
   );
-  return cli(["-s", __dirname], input).then(([stdout]) =>
-    t.is(stdout, expected));
+  return cli(["-s", __dirname], input).then(({ stdout, code }) => {
+    t.is(stdout, expected);
+    t.is(code, 0);
+  });
 });
 
 test("cli-write-stdin", t => {
@@ -60,11 +74,20 @@ test("cli-write-stdin", t => {
   const outputPath = path.join(os.tmpdir(), "test-cli-write-stdin.js");
 
   return cli(["-s", "-w", outputPath], input)
-    .then(([stdout]) => {
+    .then(({ stdout, code }) => {
       t.is(stdout, "");
+      t.is(code, 0);
       return readFile(outputPath, "utf8");
     })
     .then(actual => t.is(actual, expected));
+});
+
+test("cli-parsing-error", t => {
+  const inputPath = path.join(__dirname, "..", "fixtures", "parsing-error.js");
+  return cli([inputPath]).then(({ stderr, code }) => {
+    t.regex(stderr, /class A extends/);
+    t.is(code, 1);
+  });
 });
 
 function cli(args, stdin = null) {
@@ -81,13 +104,7 @@ function cli(args, stdin = null) {
       cmd.stdin.end(stdin);
     }
 
-    cmd.on("close", code => {
-      if (code === 0) {
-        resolve([stdout, stderr]);
-      } else {
-        reject(new Error(`bad code: ${code}; stderr: ${stderr}`));
-      }
-    });
+    cmd.on("close", code => resolve({ stdout, stderr, code }));
     cmd.on("error", err => reject(err));
   });
 }

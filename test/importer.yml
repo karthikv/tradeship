@@ -184,7 +184,7 @@
 
 - name: remove-default
   input: |
-    const example = require("../fixtures/example.js").default;
+    const es6 = require("../fixtures/es6.js").default;
   expected: "\n"
 
 - name: keep-rewrite
@@ -268,11 +268,11 @@
 
 - name: default
   input: |
-    console.log(example);
+    console.log(es6);
   expected: |
-    const example = require("../fixtures/example.js").default;
+    const es6 = require("../fixtures/es6.js").default;
 
-    console.log(example);
+    console.log(es6);
 
 - name: prop
   input: |
@@ -524,13 +524,13 @@
     import * as fs from "fs";
 
     fs.readFile();
-    console.log(example);
+    console.log(es6);
   expected: |
-    import example from "../fixtures/example.js";
+    import es6 from "../fixtures/es6.js";
     import * as fs from "fs";
 
     fs.readFile();
-    console.log(example);
+    console.log(es6);
 
 - name: import-prop
   input: |
@@ -565,21 +565,21 @@
     import * as fs from "fs";
 
     fs.readFile();
-    console.log(example);
+    console.log(es6);
     prop();
   expected: |
-    import example, { prop } from "../fixtures/example.js";
+    import es6, { prop } from "../fixtures/es6.js";
     import * as fs from "fs";
 
     fs.readFile();
-    console.log(example);
+    console.log(es6);
     prop();
 
 - name: import-remove
   input: |
     import * as fs from "fs";
     import { inspect, inherits } from "util";
-    import example from "../fixtures/example.js";
+    import es6 from "../fixtures/es6.js";
 
     inspect({});
   expected: |

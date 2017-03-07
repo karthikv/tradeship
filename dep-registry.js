@@ -1,6 +1,5 @@
 "use strict";
 
-const fs = require("fs");
 const path = require("path");
 const repl = require("repl");
 const os = require("os");
@@ -238,10 +237,12 @@ class DepRegistry {
   populateFile(entry, filePath) {
     return readFile(filePath, "utf8").then(code => {
       const exports = parser.run(code);
-      if (exports.hasExports) {
-        exports.idents.forEach(i => entry.idents.push(i));
+
+      if (exports && exports.hasExports) {
         exports.defaults.forEach(d => entry.defaults.push(d));
         exports.props.forEach(p => entry.props.push(p));
+
+        exports.idents.forEach(i => entry.idents.push(i));
         this.populateIdents(entry, filePath);
 
         if (entry.defaults.length > 0) {
