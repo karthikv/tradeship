@@ -1,3 +1,5 @@
+"use strict";
+
 const { isGlobal, findVariable, getKey } = require("../common");
 
 const whiteRegex = /^\s*$/;

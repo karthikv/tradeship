@@ -232,10 +232,20 @@
 - name: keep-relative
   input: |
     const DepRegistry = require("../dep-registry.js");
+    const stub = require("./dir/stub.js");
+    const runner = require("./runner.js");
+
     new DepRegistry();
+    runner.run();
+    stub.stub();
   expected: |
     const DepRegistry = require("../dep-registry.js");
+    const stub = require("./dir/stub.js");
+    const runner = require("./runner.js");
+
     new DepRegistry();
+    runner.run();
+    stub.stub();
 
 - name: keep-default
   input: |

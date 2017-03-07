@@ -1,9 +1,11 @@
+"use strict";
+
 const fs = require("fs");
 const path = require("path");
 const repl = require("repl");
-const vm = require("vm");
 const os = require("os");
 const crypto = require("crypto");
+const { NodeVM, VMScript } = require("vm2");
 
 const parser = require("./parser");
 const { promisify, pkgRegex } = require("./common");
@@ -13,29 +15,36 @@ const stat = promisify(fs.stat);
 const writeFile = promisify(fs.writeFile);
 
 const identRegex = /^[$a-z_][0-9a-z_$]*$/i;
-const propsScript = new vm.Script(
-  "const object = require(id);" +
-    "props = Object.keys(object);" +
-    "hasDefault = Boolean(object.__esModule) && Boolean(object.default);"
+const propsScript = new VMScript(
+  [
+    "const object = require(id);",
+    "return {",
+    "  props: Object.keys(object),",
+    "  hasDefault: Boolean(object.__esModule) && Boolean(object.default)",
+    "};"
+  ].join("\n")
 );
 
 class DepRegistry {
   /* public interface */
 
-  static populate() {
-    if (this.promise) {
-      return this.promise;
+  static populate(dir) {
+    if (this.promises && this.promises[dir]) {
+      return this.promises[dir];
     }
-    if (this.instance) {
-      return Promise.resolve(this.instance);
+    if (this.instances && this.instances[dir]) {
+      return this.instances[dir];
     }
 
     const instance = new DepRegistry();
-    this.promise = instance.populate().then(() => {
-      this.instance = instance;
+    this.promises = this.promises || {};
+
+    this.promises[dir] = instance.populate(dir).then(() => {
+      this.instances = this.instances || {};
+      this.instances[dir] = instance;
       return instance;
     });
-    return this.promise;
+    return this.promises[dir];
   }
 
   constructor() {
@@ -52,9 +61,9 @@ class DepRegistry {
 
   /* private interface */
 
-  populate() {
+  populate(dir) {
     return this
-      .findPkgMeta()
+      .findPkgMeta(dir)
       .then(() => this.readCache())
       .then(cache => {
         repl._builtinLibs.forEach(id => {
@@ -65,35 +74,39 @@ class DepRegistry {
           }
         });
 
-        const dependencies = Object.assign(
-          {},
-          this.meta.devDependencies,
-          this.meta.dependencies
-        );
+        if (this.meta) {
+          const dependencies = Object.assign(
+            {},
+            this.meta.devDependencies,
+            this.meta.dependencies
+          );
 
-        for (const id in dependencies) {
-          const entry = this.register(cache, id, dependencies[id]);
-          if (entry) {
-            this.populateIdents(entry, id);
-            this.populatePropsDefaults(
-              entry,
-              path.join(this.dir, "node_modules", id)
-            );
+          for (const id in dependencies) {
+            const entry = this.register(cache, id, dependencies[id]);
+            if (entry) {
+              this.populateIdents(entry, id);
+              this.populatePropsDefaults(
+                entry,
+                path.join(this.dir, "node_modules", id)
+              );
+            }
           }
         }
 
-        return this.populateDir(cache, this.dir);
+        if (this.dir) {
+          return this.populateDir(cache, this.dir);
+        }
       })
       .then(() => writeFile(this.cachePath, JSON.stringify(this.registry)))
       .then(() => this.computeDeps());
   }
 
   findPkgMeta(dir) {
-    if (!dir) {
-      dir = path.resolve(".");
-    }
-
-    return readFile(path.join(dir, "package.json"))
+    return readFile(path.join(dir, "package.json"), "utf8")
+      .then(json => {
+        this.meta = JSON.parse(json);
+        this.dir = dir;
+      })
       .catch(err => {
         if (err.code === "ENOENT") {
           if (dir === "/") {
@@ -104,12 +117,9 @@ class DepRegistry {
           throw err;
         }
       })
-      .then(json => {
-        this.meta = JSON.parse(json);
-        this.dir = dir;
-
+      .then(() => {
         const hash = crypto.createHash("sha256");
-        hash.update(dir);
+        hash.update(this.dir || "-");
         this.cachePath = path.join(os.tmpdir(), hash.digest("hex"));
       });
   }
@@ -167,19 +177,32 @@ class DepRegistry {
   }
 
   populatePropsDefaults(entry, id) {
-    // extract props of this dep by running Object.keys() in a V8 VM
-    const context = { require, id };
+    const vm = new NodeVM({
+      console: "redirect",
+      sandbox: { id },
+      require: {
+        external: true,
+        builtin: repl._builtinLibs,
+        context: "sandbox"
+      },
+      wrapper: "none"
+    });
+
+    let props;
+    let hasDefault;
 
     try {
-      propsScript.runInNewContext(context);
+      // extract props of this dep by running Object.keys() in a V8 VM
+      ({ props, hasDefault } = vm.run(propsScript));
     } catch (e) {
       // ignore errors from requiring this dep; we just won't populate props
+      return;
     }
 
-    if (context.props) {
-      context.props.forEach(p => entry.props.push(p));
+    if (props) {
+      props.forEach(p => entry.props.push(p));
     }
-    if (context.hasDefault) {
+    if (hasDefault) {
       // assume all idents are actually defaults
       entry.idents.forEach(i => entry.defaults.push(i));
       entry.idents = [];

@@ -1,3 +1,5 @@
+"use strict";
+
 const { isGlobal } = require("../common");
 
 const leadingWhiteRegex = /^\s*/;

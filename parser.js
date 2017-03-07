@@ -1,3 +1,5 @@
+"use strict";
+
 const { lint } = require("./common");
 const findExports = require("./rules/find-exports");
 

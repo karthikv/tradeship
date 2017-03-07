@@ -3,22 +3,7 @@ const path = require("path");
 const yaml = require("js-yaml");
 const test = require("ava").default;
 
-const importer = require("../importer");
 const parser = require("../parser");
-
-const importerYAML = fs.readFileSync(
-  path.join(__dirname, "importer.yml"),
-  "utf8"
-);
-const importerTests = yaml.safeLoad(importerYAML);
-
-importerTests.forEach(({ name, input, expected }) => {
-  test(`importer-${name}`, t => {
-    return importer
-      .run(input, __filename)
-      .then(actual => t.is(actual, expected));
-  });
-});
 
 const parserYAML = fs.readFileSync(path.join(__dirname, "parser.yml"), "utf8");
 const parserTests = yaml.safeLoad(parserYAML);

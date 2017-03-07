@@ -1,4 +1,6 @@
 /* eslint no-console: ["error", { allow: ["error"] }] */
+"use strict";
+
 const { isGlobal, findVariable, getKey } = require("../common");
 
 let exported = {};

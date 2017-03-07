@@ -1,6 +1,8 @@
 {
+  "version": "0.0.1",
   "dependencies": {
-    "eslint": "^3.15.0"
+    "eslint": "^3.15.0",
+    "vm2": "^3.2.0"
   },
   "devDependencies": {
     "@exponent/json-file": "^5.3.0",

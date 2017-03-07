@@ -1,3 +1,5 @@
+"use strict";
+
 const path = require("path");
 
 const { lint, pkgRegex } = require("./common");
@@ -6,9 +8,15 @@ const findStyle = require("./rules/find-style");
 const DepRegistry = require("./dep-registry");
 
 const undefRegex = /^'(.*?)' is not defined.$/;
+const nonSortableRegex = /^[@\.\/]+/;
 
-exports.run = function(code, filePath) {
-  return DepRegistry.populate().then(depRegistry => {
+exports.run = function(code, dir) {
+  if (!code || !dir) {
+    throw new Error("must provide code and dir");
+  }
+  dir = path.resolve(dir);
+
+  return DepRegistry.populate(dir).then(depRegistry => {
     findImports.reset();
     findStyle.reset();
 
@@ -18,15 +26,17 @@ exports.run = function(code, filePath) {
       "find-style": "error"
     });
     if (!sourceCode) {
-      console.error(violations);
-      throw new Error("couldn't parse code");
+      if (violations.length > 0) {
+        throw violations[0];
+      }
+      throw new Error("couldn't parse code and no violations");
     }
 
     const reqs = findImports.retrieve();
     // resolve all relative dependency paths
     reqs.forEach(req => {
-      if (!pkgRegex.test(req.depID) && filePath) {
-        req.depID = path.resolve(path.basename(filePath), req.depID);
+      if (!pkgRegex.test(req.depID)) {
+        req.depID = path.resolve(dir, req.depID);
       }
     });
 
@@ -36,7 +46,7 @@ exports.run = function(code, filePath) {
       reqs,
       missingIdents,
       depRegistry,
-      filePath
+      dir
     });
   });
 };
@@ -54,9 +64,7 @@ function findMissingIdents(violations, depRegistry) {
     .filter(ident => ident !== null && depRegistry.search(ident));
 }
 
-function rewriteCode(
-  { sourceCode, reqs, missingIdents, depRegistry, filePath }
-) {
+function rewriteCode({ sourceCode, reqs, missingIdents, depRegistry, dir }) {
   // line numbers are 1-indexed, so add a blank line to make indexing easy
   const sourceByLine = sourceCode.lines.slice(0);
   sourceByLine.unshift("");
@@ -69,7 +77,7 @@ function rewriteCode(
   // remove first blank line we artifically introduced
   linesToRemove.add(0);
 
-  const requiresText = composeRequires(libsToAdd, filePath);
+  const requiresText = composeRequires(libsToAdd, dir);
   let addRequiresLine = 0;
   if (reqs.length > 0) {
     addRequiresLine = reqs[0].node.loc.start.line;
@@ -155,13 +163,31 @@ function resolveIdents(missingIdents, depRegistry, reqs) {
   return { libsToAdd, linesToRemove };
 }
 
-function composeRequires(libs, filePath) {
+function composeRequires(libs, dir) {
   const style = findStyle.retrieve();
   const statements = [];
 
-  const depIDs = Object.keys(libs).sort();
-  depIDs.forEach(depID => {
-    const { idents, defaults, props } = libs[depID];
+  // turn absolute dep ids into relative ones
+  Object.keys(libs).forEach(id => {
+    if (!pkgRegex.test(id)) {
+      let newID = path.relative(dir, id);
+      if (newID[0] !== "." && newID[0] !== "/") {
+        newID = `./${newID}`;
+      }
+      libs[newID] = libs[id];
+      delete libs[id];
+    }
+  });
+
+  // sort ids alphabetically, ignoring non sortable characters
+  const ids = Object.keys(libs).sort((id1, id2) => {
+    const sortable1 = id1.replace(nonSortableRegex, "");
+    const sortable2 = id2.replace(nonSortableRegex, "");
+    return sortable1 < sortable2 ? -1 : 1;
+  });
+
+  ids.forEach(id => {
+    const { idents, defaults, props } = libs[id];
 
     if (idents.length === 0 && defaults.length === 0 && props.length === 0) {
       // nothing to require
@@ -171,16 +197,6 @@ function composeRequires(libs, filePath) {
     idents.sort();
     defaults.sort();
     props.sort();
-
-    let id;
-    if (pkgRegex.test(depID)) {
-      id = depID;
-    } else if (filePath) {
-      id = path.relative(path.dirname(filePath), depID);
-    } else {
-      // can't perform relative import without knowing file path
-      return;
-    }
 
     if (style.requireKeyword === "require") {
       statements.push(
