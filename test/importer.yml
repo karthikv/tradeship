@@ -1,10 +1,12 @@
 - name: noop
+  node: false
   input: |
     console.log("This is a test");
   expected: |
     console.log("This is a test");
 
 - name: noop-local-variable
+  node: false
   input: |
     let fs = { readFile: () => {} };
     fs.readFile();
@@ -13,6 +15,7 @@
     fs.readFile();
 
 - name: noop-existing-require
+  node: false
   input: |
     const fs = require("fs");
     fs.readFile();
@@ -21,6 +24,7 @@
     fs.readFile();
 
 - name: prepend
+  node: true
   input: |
     fs.readFile();
   expected: |
@@ -29,6 +33,7 @@
     fs.readFile();
 
 - name: prepend-quote
+  node: true
   input: |
     fs.readFile('example.txt');
   expected: |
@@ -37,6 +42,7 @@
     fs.readFile('example.txt');
 
 - name: prepend-no-semicolon
+  node: true
   input: |
     fs.readFile()
   expected: |
@@ -44,9 +50,8 @@
 
     fs.readFile()
 
-# TODO: check for node env, test with crypto module
-
 - name: prepend-kind
+  node: true
   input: |
     let filename = "example.txt";
     fs.readFile(filename);
@@ -57,6 +62,7 @@
     fs.readFile(filename);
 
 - name: prepend-all
+  node: true
   input: |
     var path = '/tmp/example.txt'
     fs.readFile(path)
@@ -68,6 +74,7 @@
     fs.readFile(path)
 
 - name: append
+  node: true
   input: |
     const fs = require("fs");
 
@@ -81,6 +88,7 @@
     util.inspect({});
 
 - name: append-quote
+  node: true
   input: |
     const fs = require('fs');
 
@@ -94,6 +102,7 @@
     util.inspect({});
 
 - name: append-no-semicolon
+  node: true
   input: |
     const fs = require("fs")
 
@@ -107,6 +116,7 @@
     util.inspect({})
 
 - name: append-kind
+  node: true
   input: |
     let fs = require("fs");
 
@@ -120,6 +130,7 @@
     util.inspect({});
 
 - name: append-all
+  node: true
   input: |
     var fs = require('fs')
 
@@ -133,6 +144,7 @@
     util.inspect({})
 
 - name: remove
+  node: false
   input: |
     const fs = require("fs");
     console.log("Hello");
@@ -140,11 +152,13 @@
     console.log("Hello");
 
 - name: remove-empty
+  node: false
   input: |
     const fs = require("fs");
   expected: "\n"
 
 - name: remove-only-requires
+  node: false
   input: |
     const fs = require("fs");
     const x = 3;
@@ -152,6 +166,7 @@
     const x = 3;
 
 - name: remove-multiple
+  node: false
   input: |
     const fs = require("fs");
     const util = require("util");
@@ -164,6 +179,7 @@
     util.inspect({});
 
 - name: remove-and-append
+  node: true
   input: |
     const fs = require("fs");
     const util = require("util");
@@ -178,16 +194,19 @@
     http.createServer();
 
 - name: remove-namespaced
+  node: false
   input: |
     const JsonFile = require("@exponent/json-file");
   expected: "\n"
 
 - name: remove-default
+  node: false
   input: |
     const es6 = require("../fixtures/es6.js").default;
   expected: "\n"
 
 - name: keep-rewrite
+  node: false
   input: |
     let fs = require("fs");
     fs = {};
@@ -196,6 +215,7 @@
     fs = {};
 
 - name: keep-multiple-declarators
+  node: false
   input: |
     const fs = require("fs"), util = require("util");
 
@@ -206,6 +226,7 @@
     fs.readFile();
 
 - name: keep-same-line-code-before
+  node: false
   input: |
     const x = 3; const fs = require("fs");
     /* some comment */ const util = require("util");
@@ -214,6 +235,7 @@
     /* some comment */ const util = require("util");
 
 - name: keep-same-line-code-after
+  node: false
   input: |
     const fs = require("fs"); const x = 3;
     const util = require("util"); // some comment
@@ -222,6 +244,7 @@
     const util = require("util"); // some comment
 
 - name: keep-namespaced
+  node: false
   input: |
     const JsonFile = require("@exponent/json-file");
     new JsonFile();
@@ -230,6 +253,7 @@
     new JsonFile();
 
 - name: keep-relative
+  node: false
   input: |
     const DepRegistry = require("../dep-registry.js");
     const stub = require("./dir/stub.js");
@@ -248,6 +272,7 @@
     stub.stub();
 
 - name: keep-default
+  node: false
   input: |
     const stub = require("stub").default;
     console.log(stub);
@@ -256,6 +281,7 @@
     console.log(stub);
 
 - name: keep-react-jsx
+  node: false
   input: |
     const React = require("react");
     <p>Paragraph</p>;
@@ -264,6 +290,7 @@
     <p>Paragraph</p>;
 
 - name: multi-ident
+  node: true
   input: |
     child_process.exec();
     childProcess.spawn();
@@ -275,6 +302,7 @@
     childProcess.spawn();
 
 - name: default
+  node: false
   input: |
     console.log(es6);
   expected: |
@@ -283,6 +311,7 @@
     console.log(es6);
 
 - name: react-jsx
+  node: false
   input: |
     <p>Paragraph</p>;
   expected: |
@@ -291,24 +320,27 @@
     <p>Paragraph</p>;
 
 - name: prop
+  node: false
   input: |
     readFile();
   expected: |
-    const { readFile } = require("fs");
+    const { readFile } = require("../common.js");
 
     readFile();
 
 - name: prop-multiple
+  node: false
   input: |
     readFile();
     readdir();
   expected: |
-    const { readFile, readdir } = require("fs");
+    const { readFile, readdir } = require("../common.js");
 
     readFile();
     readdir();
 
 - name: prop-wrap
+  node: true
   input: |
     readFileSync();
     readdirSync();
@@ -328,6 +360,7 @@
     createWriteStream();
 
 - name: prop-wrap-four-spaces
+  node: true
   input: |
     readFileSync();
     readdirSync();
@@ -353,6 +386,7 @@
     }
 
 - name: prop-wrap-hard-tab
+  node: true
   input: |
     readFileSync();
     readdirSync();
@@ -378,6 +412,7 @@
     }
 
 - name: prop-wrap-trailing-comma
+  node: true
   input: |
     readFileSync();
     readdirSync();
@@ -407,18 +442,20 @@
     })
 
 - name: prop-existing
+  node: false
   input: |
-    const { readFile, readdir } = require("fs");
+    const { readFile, readdir } = require("../common.js");
 
     readFile();
     readdir();
   expected: |
-    const { readFile, readdir } = require("fs");
+    const { readFile, readdir } = require("../common.js");
 
     readFile();
     readdir();
 
 - name: prop-remove
+  node: false
   input: |
     const { readFile } = require("fs");
     console.log("Hello");
@@ -426,6 +463,7 @@
     console.log("Hello");
 
 - name: prop-remove-existing
+  node: false
   input: |
     const { readFile, readdir } = require("fs");
     readFile();
@@ -434,6 +472,7 @@
     readFile();
 
 - name: dependency
+  node: false
   input: |
     eslint.lint();
   expected: |
@@ -442,6 +481,7 @@
     eslint.lint();
 
 - name: dependency-dev
+  node: false
   input: |
     ava.test();
   expected: |
@@ -450,6 +490,7 @@
     ava.test();
 
 - name: dependency-capital
+  node: false
   input: |
     new Eslint();
   expected: |
@@ -458,6 +499,7 @@
     new Eslint();
 
 - name: dependency-camel
+  node: false
   input: |
     jsYaml.load();
   expected: |
@@ -466,6 +508,7 @@
     jsYaml.load();
 
 - name: dependency-namespaced
+  node: false
   input: |
     new JsonFile();
   expected: |
@@ -474,6 +517,7 @@
     new JsonFile();
 
 - name: order
+  node: true
   input: |
     const util = require("util");
     const fs = require("fs");
@@ -491,6 +535,7 @@
     fs.readFile();
 
 - name: relative
+  node: false
   input: |
     new DepRegistry();
   expected: |
@@ -499,6 +544,7 @@
     new DepRegistry();
 
 - name: relative-prop
+  node: false
   input: |
     lint();
   expected: |
@@ -507,6 +553,7 @@
     lint();
 
 - name: relative-base
+  node: false
   input: |
     parser.run()
   expected: |
@@ -515,6 +562,7 @@
     parser.run()
 
 - name: relative-base-recursive
+  node: false
   input: |
     findExports.retrieve()
   expected: |
@@ -523,6 +571,7 @@
     findExports.retrieve()
 
 - name: import-ident
+  node: true
   input: |
     import * as fs from "fs";
 
@@ -536,6 +585,7 @@
     util.inspect({});
 
 - name: import-default
+  node: false
   input: |
     import * as fs from "fs";
 
@@ -549,6 +599,7 @@
     console.log(es6);
 
 - name: import-prop
+  node: true
   input: |
     import * as fs from "fs";
 
@@ -562,6 +613,7 @@
     inspect({});
 
 - name: import-ident-prop
+  node: true
   input: |
     import * as fs from "fs";
 
@@ -577,6 +629,7 @@
     inherits();
 
 - name: import-default-prop
+  node: false
   input: |
     import * as fs from "fs";
 
@@ -592,6 +645,7 @@
     prop();
 
 - name: import-remove
+  node: false
   input: |
     import * as fs from "fs";
     import { inspect, inherits } from "util";
@@ -604,6 +658,7 @@
     inspect({});
 
 - name: import-multi-ident
+  node: true
   input: |
     import * as fs from "fs";
 
@@ -620,6 +675,7 @@
     childProcess.spawn();
 
 - name: import-namespaced
+  node: false
   input: |
     import * as fs from "fs";
 

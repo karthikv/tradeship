@@ -10,7 +10,7 @@ const parserTests = yaml.safeLoad(parserYAML);
 
 parserTests.forEach(({ name, input, idents, defaults, props }) => {
   test(`parser-${name}`, t => {
-    const actual = parser.run(input);
+    const actual = parser.run(__dirname, input);
     t.deepEqual(actual.idents, new Set(idents || []));
     t.deepEqual(actual.defaults, new Set(defaults || []));
     t.deepEqual(actual.props, new Set(props || []));

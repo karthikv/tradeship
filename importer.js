@@ -10,36 +10,43 @@ const DepRegistry = require("./dep-registry");
 const undefRegex = /^'(.*?)' is not defined.$/;
 const nonSortableRegex = /^[@\.\/]+/;
 
-exports.run = function(code, dir) {
-  if (!code || !dir) {
-    throw new Error("must provide code and dir");
+exports.run = function(dir, code, override) {
+  if (!dir || !code) {
+    throw new Error("must provide dir and code");
   }
+
   dir = path.resolve(dir);
+  findImports.reset();
+  findStyle.reset();
 
-  return DepRegistry.populate(dir).then(depRegistry => {
-    findImports.reset();
-    findStyle.reset();
-
-    const { violations, sourceCode } = lint(code, {
+  const { config, violations, sourceCode } = lint({
+    dir,
+    code,
+    override,
+    rules: {
       "no-undef": "error",
       "find-imports": "error",
       "find-style": "error"
-    });
-    if (!sourceCode) {
-      if (violations.length > 0) {
-        throw violations[0];
-      }
-      throw new Error("couldn't parse code and no violations");
     }
+  });
+  if (!sourceCode) {
+    if (violations.length > 0) {
+      throw violations[0];
+    }
+    throw new Error("couldn't parse code and no violations");
+  }
 
-    const { reqs, needsReact } = findImports.retrieve();
-    // resolve all relative dependency paths
-    reqs.forEach(req => {
-      if (!pkgRegex.test(req.depID)) {
-        req.depID = path.resolve(dir, req.depID);
-      }
-    });
+  const { reqs, needsReact } = findImports.retrieve();
+  const style = findStyle.retrieve();
 
+  // resolve all relative dependency paths
+  reqs.forEach(req => {
+    if (!pkgRegex.test(req.depID)) {
+      req.depID = path.resolve(dir, req.depID);
+    }
+  });
+
+  return DepRegistry.populate(config, dir).then(depRegistry => {
     const missingIdents = findMissingIdents(violations, depRegistry);
     if (needsReact && depRegistry.search("React")) {
       missingIdents.push("React");
@@ -50,6 +57,7 @@ exports.run = function(code, dir) {
       reqs,
       missingIdents,
       depRegistry,
+      style,
       dir
     });
   });
@@ -68,7 +76,9 @@ function findMissingIdents(violations, depRegistry) {
     .filter(ident => ident !== null && depRegistry.search(ident));
 }
 
-function rewriteCode({ sourceCode, reqs, missingIdents, depRegistry, dir }) {
+function rewriteCode(
+  { sourceCode, reqs, missingIdents, depRegistry, style, dir }
+) {
   // line numbers are 1-indexed, so add a blank line to make indexing easy
   const sourceByLine = sourceCode.lines.slice(0);
   sourceByLine.unshift("");
@@ -81,7 +91,7 @@ function rewriteCode({ sourceCode, reqs, missingIdents, depRegistry, dir }) {
   // remove first blank line we artifically introduced
   linesToRemove.add(0);
 
-  const requiresText = composeRequires(libsToAdd, dir);
+  const requiresText = composeRequires(style, dir, libsToAdd);
   let addRequiresLine = 0;
   if (reqs.length > 0) {
     addRequiresLine = reqs[0].node.loc.start.line;
@@ -167,8 +177,7 @@ function resolveIdents(missingIdents, depRegistry, reqs) {
   return { libsToAdd, linesToRemove };
 }
 
-function composeRequires(libs, dir) {
-  const style = findStyle.retrieve();
+function composeRequires(style, dir, libs) {
   const statements = [];
 
   // turn absolute dep ids into relative ones

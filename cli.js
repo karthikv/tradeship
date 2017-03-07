@@ -104,9 +104,9 @@ codePromise
   })
   .then(s => {
     if (s && s.isDirectory()) {
-      return importer.run(code, options.path);
+      return importer.run(options.path, code);
     } else {
-      return importer.run(code, path.dirname(options.path));
+      return importer.run(path.dirname(options.path), code);
     }
   })
   .then(newCode => {

@@ -20,41 +20,45 @@ const propsScript = new VMScript(
   ].join("\n")
 );
 
+const isNodeID = {};
+repl._builtinLibs.forEach(id => isNodeID[id] = true);
+
 class DepRegistry {
   /* public interface */
 
-  static populate(dir) {
+  static populate(config, dir) {
     if (this.promises && this.promises[dir]) {
-      return this.promises[dir];
-    }
-    if (this.instances && this.instances[dir]) {
-      return this.instances[dir];
+      return this.promises[dir].then(instance => instance.copy(config));
     }
 
-    const instance = new DepRegistry();
+    const instance = new DepRegistry(config);
     this.promises = this.promises || {};
-
-    this.promises[dir] = instance.populate(dir).then(() => {
-      this.instances = this.instances || {};
-      this.instances[dir] = instance;
-      return instance;
-    });
+    this.promises[dir] = instance.populate(dir).then(() => instance);
     return this.promises[dir];
   }
 
-  constructor() {
+  constructor(config = null, registry = null, deps = null) {
+    this.config = config;
+
     // registry[id] is a dep that has the given id
-    this.registry = {};
+    this.registry = registry || {};
 
     // deps[name] is a dep that corresponds to the identifier name
-    this.deps = {};
+    this.deps = deps || {};
   }
 
   search(name) {
+    if (!this.config.env.node && isNodeID[this.deps[name].id]) {
+      return null;
+    }
     return this.deps[name];
   }
 
   /* private interface */
+
+  copy(config) {
+    return new DepRegistry(config, this.registry, this.deps);
+  }
 
   populate(dir) {
     return this
@@ -236,7 +240,7 @@ class DepRegistry {
 
   populateFile(entry, filePath) {
     return readFile(filePath, "utf8").then(code => {
-      const exports = parser.run(code);
+      const exports = parser.run(path.dirname(filePath), code);
 
       if (exports && exports.hasExports) {
         exports.defaults.forEach(d => entry.defaults.push(d));
@@ -276,17 +280,14 @@ class DepRegistry {
   }
 
   computeDeps() {
-    const node = {};
-    repl._builtinLibs.forEach(id => node[id] = true);
-
     for (const id in this.registry) {
       let priority;
-      if (node[id]) {
+      if (isNodeID[id]) {
         // node library; lowest priority
-        priority = 3;
+        priority = 1;
       } else if (pkgRegex.test(id)) {
         // project file; highest priority
-        priority = 1;
+        priority = 3;
       } else {
         // package.json dependency; middle priority
         priority = 2;

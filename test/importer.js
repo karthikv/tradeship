@@ -11,10 +11,18 @@ const importerYAML = fs.readFileSync(
 );
 const importerTests = yaml.safeLoad(importerYAML);
 
-importerTests.forEach(({ name, input, expected }) => {
-  test(`importer-${name}`, t => {
+importerTests.forEach(({ name, input, expected, node }) => {
+  test(`importer-node-${name}`, t => {
     return importer
-      .run(input, __dirname)
+      .run(__dirname, input)
       .then(actual => t.is(actual, expected));
   });
+
+  if (!node) {
+    test(`importer-${name}`, t => {
+      return importer
+        .run(__dirname, input, { env: { node: false } })
+        .then(actual => t.is(actual, expected));
+    });
+  }
 });
