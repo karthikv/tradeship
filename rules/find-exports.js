@@ -152,29 +152,30 @@ function parsePropsDefaults(context, node) {
   } else if (node.type === "Identifier") {
     const variable = findVariable(context, node);
 
-    // TODO: looping in right order?
-    variable.references.forEach(ref => {
-      if (ref.writeExpr) {
-        ({ props, defaults } = parsePropsDefaults(context, ref.writeExpr));
-      } else {
-        const ident = ref.identifier;
-        if (
-          ident.parent &&
-          ident.parent.type === "MemberExpression" &&
-          ident.parent.object === ident &&
-          ident.parent.parent &&
-          ident.parent.parent.type === "AssignmentExpression" &&
-          ident.parent.parent.left === ident.parent
-        ) {
-          const key = getKey(ident.parent.property);
-          if (key === "default") {
-            parseNames(ident.parent.right).forEach(n => defaults.add(n));
-          } else {
-            props.add(key);
+    if (variable) {
+      variable.references.forEach(ref => {
+        if (ref.writeExpr) {
+          ({ props, defaults } = parsePropsDefaults(context, ref.writeExpr));
+        } else {
+          const ident = ref.identifier;
+          if (
+            ident.parent &&
+            ident.parent.type === "MemberExpression" &&
+            ident.parent.object === ident &&
+            ident.parent.parent &&
+            ident.parent.parent.type === "AssignmentExpression" &&
+            ident.parent.parent.left === ident.parent
+          ) {
+            const key = getKey(ident.parent.property);
+            if (key === "default") {
+              parseNames(ident.parent.right).forEach(n => defaults.add(n));
+            } else {
+              props.add(key);
+            }
           }
         }
-      }
-    });
+      });
+    }
   }
 
   return { props, defaults };

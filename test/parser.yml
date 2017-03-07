@@ -93,6 +93,16 @@
   idents: [y]
   props: [d]
 
+- name: assign-ident-multiple-declarations
+  input: |
+    var x = { a: 3 };
+    x = { b: 3 };
+    x = { c: 3 };
+    var x = { d: 3 };
+    module.exports = x;
+  idents: [x]
+  props: [d]
+
 - name: assign-default
   input: |
     const x = 3
