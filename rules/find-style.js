@@ -6,7 +6,14 @@ const leadingWhiteRegex = /^\s*/;
 let style;
 
 exports.reset = function() {
-  style = {};
+  style = {
+    kind: null,
+    quote: null,
+    tab: null,
+    requireKeyword: null,
+    semi: null,
+    trailingComma: null
+  };
 };
 
 exports.retrieve = function() {
@@ -34,10 +41,7 @@ exports.create = function(context) {
   return {
     VariableDeclaration(node) {
       const kind = node.kind;
-      if (!kindFreqs[kind]) {
-        kindFreqs[kind] = 0;
-      }
-      kindFreqs[kind]++;
+      inc(kindFreqs, kind);
 
       // Taken from: https://github.com/eslint/eslint/blob/a30eb8d19f407643d35f5af8e270c9a150b9d015/lib/rules/semi.js#L197-L205
       const ancestors = context.getAncestors();
@@ -55,10 +59,9 @@ exports.create = function(context) {
     Literal(node) {
       if (typeof node.value === "string") {
         const quote = node.raw[0];
-        if (!quoteFreqs[quote]) {
-          quoteFreqs[quote] = 0;
+        if (quote[0] === "'" || quote[0] === '"') {
+          inc(quoteFreqs, quote);
         }
-        quoteFreqs[quote]++;
       }
     },
 
@@ -87,7 +90,7 @@ exports.create = function(context) {
     ImportDeclaration(node) {
       countSemisNode(node);
       countTrailingCommasNode(node);
-      countRequireKeywords(requireKeywordFreqs, "import");
+      inc(requireKeywordFreqs, "import");
     },
     ExportNamedDeclaration(node) {
       if (!node.declaration) {
@@ -98,7 +101,7 @@ exports.create = function(context) {
 
     CallExpression(node) {
       if (isGlobal(context, node.callee, "require")) {
-        countRequireKeywords(requireKeywordFreqs, "require");
+        inc(requireKeywordFreqs, "require");
       }
     },
 
@@ -132,10 +135,10 @@ function countTabs(sourceCode, tabFreqs) {
 
     if (indent.length > lastIndent.length) {
       const tab = indent.slice(lastIndent.length);
-      tabFreqs[tab]++;
+      inc(tabFreqs, tab);
     } else if (indent.length < lastIndent.length) {
       const tab = lastIndent.slice(indent.length);
-      tabFreqs[tab]++;
+      inc(tabFreqs, tab);
     }
 
     lastIndent = indent;
@@ -146,11 +149,7 @@ function countTabs(sourceCode, tabFreqs) {
 function countSemis(sourceCode, semiFreqs, node) {
   const token = sourceCode.getLastToken(node);
   const semi = token.type === "Punctuator" && token.value === ";" ? ";" : "";
-
-  if (!semiFreqs[semi]) {
-    semiFreqs[semi] = 0;
-  }
-  semiFreqs[semi]++;
+  inc(semiFreqs, semi);
 }
 
 // Taken from: https://github.com/eslint/eslint/blob/a30eb8d19f407643d35f5af8e270c9a150b9d015/lib/rules/comma-dangle.js#L251-L274
@@ -170,17 +169,7 @@ function countTrailingCommas(sourceCode, trailingCommaFreqs, node) {
   const token = getTrailingToken(sourceCode, node, lastItem);
   const trailingComma = token.value === "," ? "," : "";
 
-  if (!trailingCommaFreqs[trailingComma]) {
-    trailingCommaFreqs[trailingComma] = 0;
-  }
-  trailingCommaFreqs[trailingComma]++;
-}
-
-function countRequireKeywords(requireKeywordFreqs, requireKeyword) {
-  if (!requireKeywordFreqs[requireKeyword]) {
-    requireKeywordFreqs[requireKeyword] = 0;
-  }
-  requireKeywordFreqs[requireKeyword]++;
+  inc(trailingCommaFreqs, trailingComma);
 }
 
 // Taken from: https://github.com/eslint/eslint/blob/a30eb8d19f407643d35f5af8e270c9a150b9d015/lib/rules/comma-dangle.js#L139-160
@@ -245,6 +234,13 @@ function getTrailingToken(sourceCode, node, lastItem) {
       return sourceCode.getLastToken(lastItem);
     }
   }
+}
+
+function inc(freqs, key) {
+  if (!freqs[key]) {
+    freqs[key] = 0;
+  }
+  freqs[key]++;
 }
 
 function maxKey(freqs) {

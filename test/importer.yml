@@ -255,6 +255,14 @@
     const stub = require("stub").default;
     console.log(stub);
 
+- name: keep-react-jsx
+  input: |
+    const React = require("react");
+    <p>Paragraph</p>;
+  expected: |
+    const React = require("react");
+    <p>Paragraph</p>;
+
 - name: multi-ident
   input: |
     child_process.exec();
@@ -273,6 +281,14 @@
     const es6 = require("../fixtures/es6.js").default;
 
     console.log(es6);
+
+- name: react-jsx
+  input: |
+    <p>Paragraph</p>;
+  expected: |
+    const React = require("react");
+
+    <p>Paragraph</p>;
 
 - name: prop
   input: |

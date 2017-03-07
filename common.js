@@ -72,10 +72,14 @@ exports.isGlobal = function(context, node, name) {
 };
 
 exports.findVariable = function(context, node) {
+  return exports.findVariableByName(context, node.name);
+};
+
+exports.findVariableByName = function(context, name) {
   let scope = context.getScope();
 
   do {
-    const variable = scope.set.get(node.name);
+    const variable = scope.set.get(name);
     if (variable) {
       return variable;
     }

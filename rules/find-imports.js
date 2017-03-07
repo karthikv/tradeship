@@ -1,16 +1,24 @@
 "use strict";
 
-const { isGlobal, findVariable, getKey } = require("../common");
+const {
+  isGlobal,
+  findVariable,
+  findVariableByName,
+  getKey
+} = require("../common");
 
 const whiteRegex = /^\s*$/;
-let reqs;
+let imported;
 
 exports.reset = function() {
-  reqs = [];
+  imported = {
+    reqs: [],
+    needsReact: false
+  };
 };
 
 exports.retrieve = function() {
-  return reqs;
+  return imported;
 };
 
 exports.create = function(context) {
@@ -113,13 +121,21 @@ exports.create = function(context) {
       }
     },
 
+    JSXElement() {
+      const react = findVariableByName(context, "React");
+      if (react) {
+        context.markVariableAsUsed("React");
+      } else {
+        imported.needsReact = true;
+      }
+    },
+
     "Program:exit"() {
-      reqs = allReqs.map((
+      imported.reqs = allReqs.map((
         { node, depID, identVars, defaultVars, propVars }
       ) => ({
         node,
         depID,
-        // TODO: what about React for JSX?
         // remove unused names
         idents: getUsedNames(identVars || []),
         defaults: getUsedNames(defaultVars || []),

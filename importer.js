@@ -32,7 +32,7 @@ exports.run = function(code, dir) {
       throw new Error("couldn't parse code and no violations");
     }
 
-    const reqs = findImports.retrieve();
+    const { reqs, needsReact } = findImports.retrieve();
     // resolve all relative dependency paths
     reqs.forEach(req => {
       if (!pkgRegex.test(req.depID)) {
@@ -41,6 +41,10 @@ exports.run = function(code, dir) {
     });
 
     const missingIdents = findMissingIdents(violations, depRegistry);
+    if (needsReact && depRegistry.search("React")) {
+      missingIdents.push("React");
+    }
+
     return rewriteCode({
       sourceCode,
       reqs,
