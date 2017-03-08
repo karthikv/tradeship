@@ -3,7 +3,7 @@ const path = require("path");
 const yaml = require("js-yaml");
 const test = require("ava").default;
 
-const importer = require("../importer");
+const importer = require("../lib/importer");
 
 const importerYAML = fs.readFileSync(
   path.join(__dirname, "importer.yml"),

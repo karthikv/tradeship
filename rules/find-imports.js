@@ -5,7 +5,7 @@ const {
   findVariable,
   findVariableByName,
   getKey
-} = require("../common");
+} = require("../lib/common");
 
 const whiteRegex = /^\s*$/;
 let imported;

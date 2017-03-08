@@ -5,8 +5,8 @@
 const path = require("path");
 const codeFrame = require("babel-code-frame");
 
-const importer = require("./importer");
-const { readFile, writeFile, stat } = require("./common");
+const importer = require("./lib/importer");
+const { readFile, writeFile, stat } = require("./lib/common");
 
 const args = process.argv.slice(2);
 const options = {

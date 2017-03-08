@@ -3,7 +3,7 @@ const path = require("path");
 const yaml = require("js-yaml");
 const test = require("ava").default;
 
-const parser = require("../parser");
+const parser = require("../lib/parser");
 
 const parserYAML = fs.readFileSync(path.join(__dirname, "parser.yml"), "utf8");
 const parserTests = yaml.safeLoad(parserYAML);

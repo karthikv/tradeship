@@ -7,7 +7,7 @@ const os = require("os");
 const yaml = require("js-yaml");
 const test = require("ava").default;
 
-const { readFile, writeFile } = require("../common");
+const { readFile, writeFile } = require("../lib/common");
 
 const importerYAML = fs.readFileSync(
   path.join(__dirname, "importer.yml"),

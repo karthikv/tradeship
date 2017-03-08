@@ -1,6 +1,6 @@
 "use strict";
 
-const { isGlobal } = require("../common");
+const { isGlobal } = require("../lib/common");
 
 const leadingWhiteRegex = /^\s*/;
 let style;

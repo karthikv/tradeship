@@ -255,7 +255,7 @@
 - name: keep-relative
   node: false
   input: |
-    const DepRegistry = require("../dep-registry.js");
+    const DepRegistry = require("../lib/dep-registry.js");
     const runner = require("./runner.js");
     const stub = require("./dir/stub.js");
 
@@ -263,7 +263,7 @@
     runner.run();
     console.log(stub);
   expected: |
-    const DepRegistry = require("../dep-registry.js");
+    const DepRegistry = require("../lib/dep-registry.js");
     const runner = require("./runner.js");
     const stub = require("./dir/stub.js");
 
@@ -324,7 +324,7 @@
   input: |
     readFile();
   expected: |
-    const { readFile } = require("../common.js");
+    const { readFile } = require("../lib/common.js");
 
     readFile();
 
@@ -334,7 +334,7 @@
     readFile();
     readdir();
   expected: |
-    const { readFile, readdir } = require("../common.js");
+    const { readFile, readdir } = require("../lib/common.js");
 
     readFile();
     readdir();
@@ -444,12 +444,12 @@
 - name: prop-existing
   node: false
   input: |
-    const { readFile, readdir } = require("../common.js");
+    const { readFile, readdir } = require("../lib/common.js");
 
     readFile();
     readdir();
   expected: |
-    const { readFile, readdir } = require("../common.js");
+    const { readFile, readdir } = require("../lib/common.js");
 
     readFile();
     readdir();
@@ -540,7 +540,7 @@
     const findImports = require("../rules/find-imports.js");
     const fs = require("fs");
     const JsonFile = require("@exponent/json-file");
-    const parser = require("../parser.js");
+    const parser = require("../lib/parser.js");
     const util = require("util");
 
     util.inspect({});
@@ -554,7 +554,7 @@
   input: |
     new DepRegistry();
   expected: |
-    const DepRegistry = require("../dep-registry.js");
+    const DepRegistry = require("../lib/dep-registry.js");
 
     new DepRegistry();
 
@@ -563,7 +563,7 @@
   input: |
     lint();
   expected: |
-    const { lint } = require("../common.js");
+    const { lint } = require("../lib/common.js");
 
     lint();
 
@@ -572,18 +572,18 @@
   input: |
     parser.run()
   expected: |
-    const parser = require("../parser.js")
+    const parser = require("../lib/parser.js")
 
     parser.run()
 
 - name: relative-base-recursive
   node: false
   input: |
-    findExports.retrieve()
+    findExports.retrieve();
   expected: |
-    const findExports = require("../rules/find-exports.js")
+    const findExports = require("../rules/find-exports.js");
 
-    findExports.retrieve()
+    findExports.retrieve();
 
 - name: import-ident
   node: true
