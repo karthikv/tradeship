@@ -256,16 +256,16 @@
   node: false
   input: |
     const DepRegistry = require("../dep-registry.js");
-    const stub = require("./dir/stub.js");
     const runner = require("./runner.js");
+    const stub = require("./dir/stub.js");
 
     new DepRegistry();
     runner.run();
     console.log(stub);
   expected: |
     const DepRegistry = require("../dep-registry.js");
-    const stub = require("./dir/stub.js");
     const runner = require("./runner.js");
+    const stub = require("./dir/stub.js");
 
     new DepRegistry();
     runner.run();
@@ -526,22 +526,28 @@
     console.log(stub);
 
 - name: order
-  node: true
+  node: false
   input: |
     const util = require("util");
     const fs = require("fs");
 
     util.inspect({});
-    http.createServer();
     fs.readFile();
+    parser.run();
+    findImports.retrieve();
+    new JsonFile();
   expected: |
+    const findImports = require("../rules/find-imports.js");
     const fs = require("fs");
-    const http = require("http");
+    const JsonFile = require("@exponent/json-file");
+    const parser = require("../parser.js");
     const util = require("util");
 
     util.inspect({});
-    http.createServer();
     fs.readFile();
+    parser.run();
+    findImports.retrieve();
+    new JsonFile();
 
 - name: relative
   node: false
@@ -691,8 +697,8 @@
     fs.readFile();
     new JsonFile();
   expected: |
-    import * as JsonFile from "@exponent/json-file";
     import * as fs from "fs";
+    import * as JsonFile from "@exponent/json-file";
 
     fs.readFile();
     new JsonFile();

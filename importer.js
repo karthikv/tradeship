@@ -192,11 +192,15 @@ function composeRequires(style, dir, libs) {
     }
   });
 
-  // sort ids alphabetically, ignoring non sortable characters
+  // sort ids alphabetically by basename, falling back to full id
   const ids = Object.keys(libs).sort((id1, id2) => {
-    const sortable1 = id1.replace(nonSortableRegex, "");
-    const sortable2 = id2.replace(nonSortableRegex, "");
-    return sortable1 < sortable2 ? -1 : 1;
+    const base1 = path.basename(id1);
+    const base2 = path.basename(id2);
+
+    if (base1 !== base2) {
+      return base1 < base2 ? -1 : 1;
+    }
+    return id1 < id2 ? -1 : 1;
   });
 
   ids.forEach(id => {
