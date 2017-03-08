@@ -2,7 +2,7 @@
 
 const path = require("path");
 
-const { lint, pkgRegex } = require("./common");
+const { lint, fileRegex } = require("./common");
 const findImports = require("./rules/find-imports");
 const findStyle = require("./rules/find-style");
 const DepRegistry = require("./dep-registry");
@@ -41,7 +41,7 @@ exports.run = function(dir, code, override) {
 
   // resolve all relative dependency paths
   reqs.forEach(req => {
-    if (!pkgRegex.test(req.depID)) {
+    if (fileRegex.test(req.depID)) {
       req.depID = path.resolve(dir, req.depID);
     }
   });
@@ -182,7 +182,7 @@ function composeRequires(style, dir, libs) {
 
   // turn absolute dep ids into relative ones
   Object.keys(libs).forEach(id => {
-    if (!pkgRegex.test(id)) {
+    if (fileRegex.test(id)) {
       let newID = path.relative(dir, id);
       if (newID[0] !== "." && newID[0] !== "/") {
         newID = `./${newID}`;

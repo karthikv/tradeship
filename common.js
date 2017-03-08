@@ -127,3 +127,4 @@ exports.getKey = function(node) {
 };
 
 exports.pkgRegex = /^(@[\w\.\-]+\/)?[\w\.\-]+$/;
+exports.fileRegex = /^\.?\.?\//;

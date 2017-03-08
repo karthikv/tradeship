@@ -261,7 +261,7 @@
 
     new DepRegistry();
     runner.run();
-    stub.stub();
+    console.log(stub);
   expected: |
     const DepRegistry = require("../dep-registry.js");
     const stub = require("./dir/stub.js");
@@ -269,7 +269,7 @@
 
     new DepRegistry();
     runner.run();
-    stub.stub();
+    console.log(stub);
 
 - name: keep-default
   node: false
@@ -471,7 +471,7 @@
     const { readFile } = require("fs");
     readFile();
 
-- name: dependency
+- name: pkg
   node: false
   input: |
     eslint.lint();
@@ -480,7 +480,7 @@
 
     eslint.lint();
 
-- name: dependency-dev
+- name: pkg-dev
   node: false
   input: |
     ava.test();
@@ -489,7 +489,7 @@
 
     ava.test();
 
-- name: dependency-capital
+- name: pkg-capital
   node: false
   input: |
     new Eslint();
@@ -498,7 +498,7 @@
 
     new Eslint();
 
-- name: dependency-camel
+- name: pkg-camel
   node: false
   input: |
     jsYaml.load();
@@ -507,7 +507,7 @@
 
     jsYaml.load();
 
-- name: dependency-namespaced
+- name: pkg-namespaced
   node: false
   input: |
     new JsonFile();
@@ -515,6 +515,15 @@
     const JsonFile = require("@exponent/json-file");
 
     new JsonFile();
+
+- name: pkg-path
+  node: false
+  input: |
+    const stub = require("eslint/stub");
+    console.log(stub);
+  expected: |
+    const stub = require("eslint/stub");
+    console.log(stub);
 
 - name: order
   node: true

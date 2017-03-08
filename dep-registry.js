@@ -146,13 +146,12 @@ class DepRegistry {
   }
 
   populateIdents(entry, id) {
+    const ext = path.extname(id);
     let base;
-    if (id.indexOf("/") === -1) {
-      base = id;
-    } else if (pkgRegex.test(id)) {
-      base = path.basename(id);
+    if (ext === ".js" || ext === ".jsx") {
+      base = path.basename(id, ext);
     } else {
-      base = path.basename(id, path.extname(id));
+      base = path.basename(id);
     }
 
     if (identRegex.test(base)) {
@@ -286,11 +285,11 @@ class DepRegistry {
         // node library; lowest priority
         priority = 1;
       } else if (pkgRegex.test(id)) {
-        // project file; highest priority
-        priority = 3;
-      } else {
         // package.json dependency; middle priority
         priority = 2;
+      } else {
+        // project file; highest priority
+        priority = 3;
       }
 
       const { idents, defaults, props } = this.registry[id];
