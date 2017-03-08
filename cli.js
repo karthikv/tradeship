@@ -40,7 +40,7 @@ args.forEach(arg => {
 
 if (options.help) {
   const lines = [
-    "Usage: req [options] [path]",
+    "Usage: accede [options] [path]",
     "Automatically adds requires to JavaScript source code.",
     "",
     "Options:",
