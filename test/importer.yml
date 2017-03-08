@@ -280,7 +280,7 @@
     const stub = require("stub").default;
     console.log(stub);
 
-- name: keep-react-jsx
+- name: keep-react-for-jsx
   node: false
   input: |
     const React = require("react");
@@ -288,6 +288,19 @@
   expected: |
     const React = require("react");
     <p>Paragraph</p>;
+
+- name: keep-jsx-ident
+  node: false
+  input: |
+    const Component = require("../fixtures/component.js");
+    const React = require("react");
+
+    <Component />;
+  expected: |
+    const Component = require("../fixtures/component.js");
+    const React = require("react");
+
+    <Component />;
 
 - name: multi-ident
   node: true
@@ -310,7 +323,7 @@
 
     console.log(es6);
 
-- name: react-jsx
+- name: react-for-jsx
   node: false
   input: |
     <p>Paragraph</p>;
@@ -318,6 +331,16 @@
     const React = require("react");
 
     <p>Paragraph</p>;
+
+- name: jsx-ident
+  node: false
+  input: |
+    <Component />;
+  expected: |
+    const Component = require("../fixtures/component.js");
+    const React = require("react");
+
+    <Component />;
 
 - name: prop
   node: false

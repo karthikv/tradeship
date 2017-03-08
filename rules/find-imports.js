@@ -1,24 +1,16 @@
 "use strict";
 
-const {
-  isGlobal,
-  findVariable,
-  findVariableByName,
-  getKey
-} = require("../lib/common");
+const { isGlobal, findVariable, getKey } = require("../lib/common");
 
 const whiteRegex = /^\s*$/;
-let imported;
+let reqs;
 
 exports.reset = function() {
-  imported = {
-    reqs: [],
-    needsReact: false
-  };
+  reqs = [];
 };
 
 exports.retrieve = function() {
-  return imported;
+  return reqs;
 };
 
 exports.create = function(context) {
@@ -119,17 +111,8 @@ exports.create = function(context) {
       }
     },
 
-    JSXElement() {
-      const react = findVariableByName(context, "React");
-      if (react) {
-        context.markVariableAsUsed("React");
-      } else {
-        imported.needsReact = true;
-      }
-    },
-
     "Program:exit"() {
-      imported.reqs = allReqs.map((
+      reqs = allReqs.map((
         { node, depID, identVars, defaultVars, propVars }
       ) => ({
         node,
