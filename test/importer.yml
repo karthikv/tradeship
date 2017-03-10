@@ -323,6 +323,15 @@
 
     console.log(es6);
 
+- name: default-anonymous
+  node: false
+  input: |
+    console.log(defaultAnonymous);
+  expected: |
+    const defaultAnonymous = require("../fixtures/default-anonymous.js").default;
+
+    console.log(defaultAnonymous);
+
 - name: react-for-jsx
   node: false
   input: |

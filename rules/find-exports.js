@@ -9,7 +9,8 @@ exports.reset = function() {
     idents: new Set(),
     defaults: new Set(),
     props: new Set(),
-    hasExports: false
+    hasExports: false,
+    hasDefaults: false
   };
 };
 
@@ -18,8 +19,6 @@ exports.retrieve = function() {
 };
 
 exports.create = function(context) {
-  const { idents, defaults, props } = exported;
-
   return {
     AssignmentExpression(node) {
       if (node.left.type === "MemberExpression") {
@@ -29,17 +28,12 @@ exports.create = function(context) {
         if (
           isGlobal(context, object, "module") && getKey(property) === "exports"
         ) {
-          parseNames(right).forEach(n => idents.add(n));
-          const { props: newProps, defaults: newDefaults } = parsePropsDefaults(
-            context,
-            right
-          );
-          newProps.forEach(p => props.add(p));
-          newDefaults.forEach(d => defaults.add(d));
+          addIdents(parseNames(right));
+          parsePropsDefaults(context, right);
 
           let parent = node.parent;
           while (parent.type === "AssignmentExpression") {
-            parseNames(parent.left).forEach(n => idents.add(n));
+            addIdents(parseNames(parent.left));
             parent = parent.parent;
           }
         }
@@ -52,9 +46,9 @@ exports.create = function(context) {
         ) {
           const key = getKey(property);
           if (key === "default") {
-            parseNames(right).forEach(n => defaults.add(n));
+            addDefaults(parseNames(right));
           } else {
-            props.add(key);
+            addProps([key]);
           }
         }
       }
@@ -69,25 +63,22 @@ exports.create = function(context) {
     },
 
     ExportNamedDeclaration(node) {
-      exported.hasExports = true;
-
       if (node.declaration) {
-        parseNames(node.declaration).forEach(n => props.add(n));
+        addProps(parseNames(node.declaration));
       }
       if (node.specifiers) {
         node.specifiers.forEach(s => {
           if (s.exported.name === "default") {
-            defaults.add(s.local.name);
+            addDefaults([s.local.name]);
           } else {
-            props.add(s.exported.name);
+            addProps([s.exported.name]);
           }
         });
       }
     },
 
     ExportDefaultDeclaration(node) {
-      exported.hasExports = true;
-      parseNames(node.declaration).forEach(n => defaults.add(n));
+      addDefaults(parseNames(node.declaration));
     },
 
     ExportAllDeclaration() {
@@ -136,16 +127,13 @@ function parseNames(node) {
 }
 
 function parsePropsDefaults(context, node) {
-  let props = new Set();
-  let defaults = new Set();
-
   if (node.type === "ObjectExpression") {
     node.properties.forEach(p => {
       if (p.key.type === "Identifier") {
         if (p.key.name === "default") {
-          parseNames(p.value).forEach(n => defaults.add(n));
+          addDefaults(parseNames(p.value));
         } else {
-          props.add(p.key.name);
+          addProps([p.key.name]);
         }
       }
     });
@@ -153,9 +141,16 @@ function parsePropsDefaults(context, node) {
     const variable = findVariable(context, node);
 
     if (variable) {
-      variable.references.forEach(ref => {
+      let lastWriteIndex = 0;
+      variable.references.forEach((ref, i) => {
         if (ref.writeExpr) {
-          ({ props, defaults } = parsePropsDefaults(context, ref.writeExpr));
+          lastWriteIndex = i;
+        }
+      });
+
+      variable.references.slice(lastWriteIndex).forEach(ref => {
+        if (ref.writeExpr) {
+          parsePropsDefaults(context, ref.writeExpr);
         } else {
           const ident = ref.identifier;
           if (
@@ -168,15 +163,29 @@ function parsePropsDefaults(context, node) {
           ) {
             const key = getKey(ident.parent.property);
             if (key === "default") {
-              parseNames(ident.parent.right).forEach(n => defaults.add(n));
+              addDefaults(parseNames(ident.parent.right));
             } else {
-              props.add(key);
+              addProps([key]);
             }
           }
         }
       });
     }
   }
+}
 
-  return { props, defaults };
+function addIdents(idents) {
+  exported.hasExports = true;
+  idents.forEach(i => exported.idents.add(i));
+}
+
+function addProps(props) {
+  exported.hasExports = true;
+  props.forEach(p => exported.props.add(p));
+}
+
+function addDefaults(defaults) {
+  exported.hasExports = true;
+  exported.hasDefaults = true;
+  defaults.forEach(d => exported.defaults.add(d));
 }
