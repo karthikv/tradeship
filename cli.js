@@ -3,8 +3,6 @@
 "use strict";
 
 const path = require("path");
-const codeFrame = require("babel-code-frame");
-
 const importer = require("./lib/importer");
 const { readFile, writeFile, stat } = require("./lib/common");
 
@@ -119,9 +117,9 @@ codePromise
   .catch(err => {
     const { line, column, message } = err;
     if (line && column && message) {
+      const codeFrame = require("babel-code-frame");
       const frame = codeFrame(code, line, column, { highlightCode: true });
-      console.error(message + "\n");
-      console.error(frame);
+      console.error(`${message}\n${frame}`);
       process.exit(1);
     }
 
