@@ -96,7 +96,7 @@ function cli(args, stdin = null) {
     let stdout = "";
     let stderr = "";
 
-    const cmd = spawn(cli, args);
+    const cmd = spawn("node", [cli].concat(args));
     cmd.stdout.on("data", chunk => stdout += chunk);
     cmd.stderr.on("data", chunk => stderr += chunk);
 
