@@ -302,6 +302,27 @@
 
     <Component />;
 
+- name: keep-inner-scope
+  node: false
+  input: |
+    const util = require("util");
+
+    function foo() {
+      const fs = require("fs");
+      fs.readFile();
+    }
+
+    util.inspect();
+  expected: |
+    const util = require("util");
+
+    function foo() {
+      const fs = require("fs");
+      fs.readFile();
+    }
+
+    util.inspect();
+
 - name: multi-ident
   node: true
   input: |
