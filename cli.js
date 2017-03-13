@@ -36,10 +36,10 @@ args.forEach(arg => {
   }
 });
 
-if (options.help) {
+if (options.help || args.length === 0) {
   const lines = [
-    "Usage: accede [options] [path]",
-    "Automatically adds requires to JavaScript source code.",
+    "Usage: tradeship [options] [path]",
+    "Automatically imports missing JS dependencies and removes unused ones.",
     "",
     "Options:",
     "-s, --stdin    read contents from stdin",
