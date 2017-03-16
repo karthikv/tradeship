@@ -297,13 +297,15 @@
 - name: keep-jsx-ident
   node: false
   input: |
-    const Component = require("../fixtures/component.js");
     const React = require("react");
+
+    const Component = require("../fixtures/component.js");
 
     <Component />;
   expected: |
-    const Component = require("../fixtures/component.js");
     const React = require("react");
+
+    const Component = require("../fixtures/component.js");
 
     <Component />;
 
@@ -327,6 +329,35 @@
     }
 
     util.inspect();
+
+- name: keep-order
+  node: false
+  input: |
+    const fs = require("fs");
+    const JsonFile = require("@exponent/json-file");
+    const util = require("util");
+
+    const findImports = require("../rules/find-imports.js");
+    const parser = require("../lib/parser.js");
+
+    util.inspect({});
+    fs.readFile();
+    parser.run();
+    findImports.retrieve();
+    new JsonFile();
+  expected: |
+    const fs = require("fs");
+    const JsonFile = require("@exponent/json-file");
+    const util = require("util");
+
+    const findImports = require("../rules/find-imports.js");
+    const parser = require("../lib/parser.js");
+
+    util.inspect({});
+    fs.readFile();
+    parser.run();
+    findImports.retrieve();
+    new JsonFile();
 
 - name: multi-ident
   node: true
@@ -372,8 +403,9 @@
   input: |
     <Component />;
   expected: |
-    const Component = require("../fixtures/component.js");
     const React = require("react");
+
+    const Component = require("../fixtures/component.js");
 
     <Component />;
 
@@ -608,11 +640,12 @@
     findImports.retrieve();
     new JsonFile();
   expected: |
-    const findImports = require("../rules/find-imports.js");
     const fs = require("fs");
     const JsonFile = require("@exponent/json-file");
-    const parser = require("../lib/parser.js");
     const util = require("util");
+
+    const findImports = require("../rules/find-imports.js");
+    const parser = require("../lib/parser.js");
 
     util.inspect({});
     fs.readFile();
@@ -678,8 +711,9 @@
     fs.readFile();
     console.log(es6);
   expected: |
-    import es6 from "../fixtures/es6.js";
     import * as fs from "fs";
+
+    import es6 from "../fixtures/es6.js";
 
     fs.readFile();
     console.log(es6);
@@ -723,8 +757,9 @@
     console.log(es6);
     prop();
   expected: |
-    import es6, { prop } from "../fixtures/es6.js";
     import * as fs from "fs";
+
+    import es6, { prop } from "../fixtures/es6.js";
 
     fs.readFile();
     console.log(es6);

@@ -1,8 +1,6 @@
 "use strict";
 
-const { isGlobal, findVariable, getKey } = require("../lib/common");
-
-const whiteRegex = /^\s*$/;
+const { isGlobal, findVariable, getKey, whiteRegex } = require("../lib/common");
 let reqs;
 
 exports.reset = function() {
@@ -19,7 +17,6 @@ exports.create = function(context) {
   sourceByLine.unshift("");
 
   const allReqs = [];
-
   return {
     VariableDeclaration(node) {
       const { loc: { start, end } } = node;
