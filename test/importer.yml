@@ -377,6 +377,19 @@
 
     <Component />;
 
+- name: no-dupes
+  node: true
+  input: |
+    fs.readFile();
+    fs.createReadStream();
+    fs.createWriteStream();
+  expected: |
+    const fs = require("fs");
+
+    fs.readFile();
+    fs.createReadStream();
+    fs.createWriteStream();
+
 - name: prop
   node: false
   input: |
