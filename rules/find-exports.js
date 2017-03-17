@@ -1,7 +1,7 @@
 /* eslint no-console: ["error", { allow: ["error"] }] */
 "use strict";
 
-const { isGlobal, findVariable, getKey } = require("../lib/common");
+const { findVariable, getKey, isGlobal } = require("../lib/common");
 
 let exported = {};
 exports.reset = function() {

@@ -3,8 +3,9 @@
 "use strict";
 
 const path = require("path");
+
+const { readFile, stat, writeFile } = require("./lib/common");
 const importer = require("./lib/importer");
-const { readFile, writeFile, stat } = require("./lib/common");
 
 const args = process.argv.slice(2);
 const options = {

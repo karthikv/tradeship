@@ -1,11 +1,11 @@
 "use strict";
 
-const fs = require("fs");
-const path = require("path");
-const { spawn } = require("child_process");
-const os = require("os");
-const yaml = require("js-yaml");
 const test = require("ava").default;
+const { spawn } = require("child_process");
+const fs = require("fs");
+const yaml = require("js-yaml");
+const os = require("os");
+const path = require("path");
 
 const { readFile, writeFile } = require("../lib/common");
 

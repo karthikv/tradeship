@@ -1,7 +1,7 @@
-const fs = require("fs");
-const path = require("path");
-const yaml = require("js-yaml");
 const test = require("ava").default;
+const fs = require("fs");
+const yaml = require("js-yaml");
+const path = require("path");
 
 const importer = require("../lib/importer");
 

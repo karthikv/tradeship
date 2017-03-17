@@ -1,7 +1,7 @@
 "use strict";
 
-const os = require("os");
 const test = require("ava").default;
+const os = require("os");
 
 const api = require("../api");
 

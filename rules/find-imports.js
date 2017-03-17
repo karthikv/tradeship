@@ -1,6 +1,6 @@
 "use strict";
 
-const { isGlobal, findVariable, getKey, whiteRegex } = require("../lib/common");
+const { findVariable, getKey, isGlobal, whiteRegex } = require("../lib/common");
 let reqs;
 
 exports.reset = function() {
