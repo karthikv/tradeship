@@ -35,17 +35,21 @@ exports.create = function(context) {
 
       const { init, id } = node.declarations[0];
 
-      // might be require().default
       let call = init;
       let isDefault = false;
+
+      // might be require().default
       if (
-        init.type === "MemberExpression" && getKey(init.property) === "default"
+        init &&
+        init.type === "MemberExpression" &&
+        getKey(init.property) === "default"
       ) {
         isDefault = true;
         call = init.object;
       }
 
       if (
+        !call ||
         call.type !== "CallExpression" ||
         !isGlobal(context, call.callee, "require") ||
         call.arguments.length !== 1 ||

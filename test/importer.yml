@@ -359,6 +359,13 @@
     findImports.retrieve();
     new JsonFile();
 
+- name: keep-global-declaration
+  node: false
+  input: |
+    let x
+  expected: |
+    let x
+
 - name: multi-ident
   node: true
   input: |
