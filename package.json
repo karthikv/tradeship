@@ -3,7 +3,7 @@
   "description": "Automatically imports missing JS dependencies and removes unused ones.",
   "author": "Karthik Viswanathan <karthik.ksv@gmail.com>",
   "homepage": "https://github.com/karthikv/tradeship",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "bin": {
     "tradeship": "./cli.js"
   },
