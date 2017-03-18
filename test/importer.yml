@@ -337,7 +337,7 @@
     const JsonFile = require("@exponent/json-file");
     const util = require("util");
 
-    const findImports = require("../rules/find-imports.js");
+    const findImports = require("../visits/find-imports.js");
     const parser = require("../lib/parser.js");
 
     util.inspect({});
@@ -350,7 +350,7 @@
     const JsonFile = require("@exponent/json-file");
     const util = require("util");
 
-    const findImports = require("../rules/find-imports.js");
+    const findImports = require("../visits/find-imports.js");
     const parser = require("../lib/parser.js");
 
     util.inspect({});
@@ -428,6 +428,27 @@
     fs.readFile();
     fs.createReadStream();
     fs.createWriteStream();
+
+- name: global-return
+  node: false
+  input: |
+    readFile();
+    return 3;
+  expected: |
+    const { readFile } = require("../lib/common.js");
+
+    readFile();
+    return 3;
+
+- name: read-env
+  node: true
+  # crypto is a global in the browser; will work if *only* node env is set
+  input: |
+    crypto.randomBytes();
+  expected: |
+    const crypto = require("crypto");
+
+    crypto.randomBytes();
 
 - name: prop
   node: false
@@ -584,11 +605,11 @@
 - name: pkg
   node: false
   input: |
-    eslint.lint();
+    babylon.parse();
   expected: |
-    const eslint = require("eslint");
+    const babylon = require("babylon");
 
-    eslint.lint();
+    babylon.parse();
 
 - name: pkg-dev
   node: false
@@ -602,11 +623,11 @@
 - name: pkg-capital
   node: false
   input: |
-    new Eslint();
+    new Babylon();
   expected: |
-    const Eslint = require("eslint");
+    const Babylon = require("babylon");
 
-    new Eslint();
+    new Babylon();
 
 - name: pkg-camel
   node: false
@@ -629,10 +650,10 @@
 - name: pkg-path
   node: false
   input: |
-    const stub = require("eslint/stub");
+    const stub = require("babylon/stub");
     console.log(stub);
   expected: |
-    const stub = require("eslint/stub");
+    const stub = require("babylon/stub");
     console.log(stub);
 
 - name: order
@@ -651,7 +672,7 @@
     const JsonFile = require("@exponent/json-file");
     const util = require("util");
 
-    const findImports = require("../rules/find-imports.js");
+    const findImports = require("../visits/find-imports.js");
     const parser = require("../lib/parser.js");
 
     util.inspect({});
@@ -672,11 +693,11 @@
 - name: relative-prop
   node: false
   input: |
-    lint();
+    tryJSONParse();
   expected: |
-    const { lint } = require("../lib/common.js");
+    const { tryJSONParse } = require("../lib/common.js");
 
-    lint();
+    tryJSONParse();
 
 - name: relative-base
   node: false
@@ -692,7 +713,7 @@
   input: |
     findExports.retrieve();
   expected: |
-    const findExports = require("../rules/find-exports.js");
+    const findExports = require("../visits/find-exports.js");
 
     findExports.retrieve();
 

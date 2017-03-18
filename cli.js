@@ -116,11 +116,12 @@ codePromise
     }
   })
   .catch(err => {
-    const { line, column, message } = err;
-    if (line && column && message) {
+    if (err instanceof SyntaxError && err.loc) {
       const codeFrame = require("babel-code-frame");
+      const { line, column } = err.loc;
+
       const frame = codeFrame(code, line, column, { highlightCode: true });
-      console.error(`${message}\n${frame}`);
+      console.error(`${err.message}\n${frame}`);
       process.exit(1);
     }
 

@@ -1,26 +1,10 @@
 "use strict";
 
-const { isGlobal } = require("../lib/common");
+const { tokTypes } = require("babylon");
 
 const leadingWhiteRegex = /^\s*/;
-let style;
 
-exports.reset = function() {
-  style = {
-    kind: null,
-    quote: null,
-    tab: null,
-    requireKeyword: null,
-    semi: null,
-    trailingComma: null
-  };
-};
-
-exports.retrieve = function() {
-  return style;
-};
-
-exports.create = function(context) {
+exports.init = function(context) {
   const kindFreqs = {};
   const quoteFreqs = {};
   const semiFreqs = {};
@@ -28,15 +12,13 @@ exports.create = function(context) {
   const trailingCommaFreqs = {};
   const requireKeywordFreqs = {};
 
-  const sourceCode = context.getSourceCode();
-  countTabs(sourceCode, tabFreqs);
-
-  const countSemisNode = countSemis.bind(null, sourceCode, semiFreqs);
+  const countSemisNode = countSemis.bind(null, context, semiFreqs);
   const countTrailingCommasNode = countTrailingCommas.bind(
     null,
-    sourceCode,
+    context,
     trailingCommaFreqs
   );
+  countTabs(context, tabFreqs);
 
   return {
     VariableDeclaration(node) {
@@ -44,10 +26,7 @@ exports.create = function(context) {
       inc(kindFreqs, kind);
 
       // Taken from: https://github.com/eslint/eslint/blob/a30eb8d19f407643d35f5af8e270c9a150b9d015/lib/rules/semi.js#L197-L205
-      const ancestors = context.getAncestors();
-      const parentIndex = ancestors.length - 1;
-      const parent = ancestors[parentIndex];
-
+      const parent = node.parent;
       if (
         (parent.type !== "ForStatement" || parent.init !== node) &&
         (!/^For(?:In|Of)Statement/.test(parent.type) || parent.left !== node)
@@ -100,36 +79,30 @@ exports.create = function(context) {
     },
 
     CallExpression(node) {
-      if (isGlobal(context, node.callee, "require")) {
+      if (context.isGlobal(node.callee, "require")) {
         inc(requireKeywordFreqs, "require");
       }
     },
 
-    "Program:exit"() {
-      style.kind = maxKey(kindFreqs) || "const";
-      style.quote = maxKey(quoteFreqs) || '"';
-      style.tab = maxKey(tabFreqs) || "  ";
-      style.requireKeyword = maxKey(requireKeywordFreqs) || "require";
-
-      // empty string is falsy, must explicitly check for null
-      style.semi = maxKey(semiFreqs);
-      if (style.semi === null) {
-        style.semi = ";";
-      }
-      style.trailingComma = maxKey(trailingCommaFreqs);
-      if (style.trailingComma === null) {
-        style.trailingComma = "";
-      }
+    finish() {
+      context.style = {
+        kind: maxKey(kindFreqs, "const"),
+        quote: maxKey(quoteFreqs, '"'),
+        tab: maxKey(tabFreqs, "  "),
+        requireKeyword: maxKey(requireKeywordFreqs, "require"),
+        semi: maxKey(semiFreqs, ";"),
+        trailingComma: maxKey(trailingCommaFreqs, "")
+      };
     }
   };
 };
 
-function countTabs(sourceCode, tabFreqs) {
+function countTabs(context, tabFreqs) {
   let lastIndent = 0;
-  sourceCode.lines.forEach(line => {
-    const indent = line.match(leadingWhiteRegex)[0];
+  context.textLines.forEach(textLine => {
+    const indent = textLine.match(leadingWhiteRegex)[0];
     // ignore blank lines
-    if (indent.length === line.length) {
+    if (indent.length === textLine.length) {
       return;
     }
 
@@ -146,14 +119,14 @@ function countTabs(sourceCode, tabFreqs) {
 }
 
 // Taken from: https://github.com/eslint/eslint/blob/a30eb8d19f407643d35f5af8e270c9a150b9d015/lib/rules/semi.js#L171-181
-function countSemis(sourceCode, semiFreqs, node) {
-  const token = sourceCode.getLastToken(node);
-  const semi = token.type === "Punctuator" && token.value === ";" ? ";" : "";
+function countSemis(context, semiFreqs, node) {
+  const token = context.getLastToken(node);
+  const semi = token.type === tokTypes.semi ? ";" : "";
   inc(semiFreqs, semi);
 }
 
 // Taken from: https://github.com/eslint/eslint/blob/a30eb8d19f407643d35f5af8e270c9a150b9d015/lib/rules/comma-dangle.js#L251-L274
-function countTrailingCommas(sourceCode, trailingCommaFreqs, node) {
+function countTrailingCommas(context, trailingCommaFreqs, node) {
   const lastItem = getLastItem(node);
 
   if (
@@ -162,12 +135,12 @@ function countTrailingCommas(sourceCode, trailingCommaFreqs, node) {
   ) {
     return;
   }
-  if (!isTrailingCommaAllowed(lastItem) || !isMultiline(sourceCode, node)) {
+  if (!isTrailingCommaAllowed(lastItem) || !isMultiline(context, node)) {
     return;
   }
 
-  const token = getTrailingToken(sourceCode, node, lastItem);
-  const trailingComma = token.value === "," ? "," : "";
+  const token = getTrailingToken(context, node, lastItem);
+  const trailingComma = token.type === tokTypes.comma ? "," : "";
 
   inc(trailingCommaFreqs, trailingComma);
 }
@@ -204,34 +177,34 @@ function isTrailingCommaAllowed(lastItem) {
 }
 
 // Taken from: https://github.com/eslint/eslint/blob/a30eb8d19f407643d35f5af8e270c9a150b9d015/lib/rules/comma-dangle.js#L197-208
-function isMultiline(sourceCode, node) {
+function isMultiline(context, node) {
   const lastItem = getLastItem(node);
 
   if (!lastItem) {
     return false;
   }
 
-  const penultimateToken = getTrailingToken(sourceCode, node, lastItem);
-  const lastToken = sourceCode.getTokenAfter(penultimateToken);
+  const penultimateToken = getTrailingToken(context, node, lastItem);
+  const lastToken = context.getTokenAfter(penultimateToken);
 
   return lastToken.loc.end.line !== penultimateToken.loc.end.line;
 }
 
 // Taken from: https://github.com/eslint/eslint/blob/a30eb8d19f407643d35f5af8e270c9a150b9d015/lib/rules/comma-dangle.js#L171-187
-function getTrailingToken(sourceCode, node, lastItem) {
+function getTrailingToken(context, node, lastItem) {
   switch (node.type) {
     case "ObjectExpression":
     case "ArrayExpression":
     case "CallExpression":
     case "NewExpression":
-      return sourceCode.getLastToken(node, 1);
+      return context.getLastToken(node, 1);
     default: {
-      const nextToken = sourceCode.getTokenAfter(lastItem);
+      const nextToken = context.getTokenAfter(lastItem);
 
-      if (nextToken.value === ",") {
+      if (nextToken.type === tokTypes.comma) {
         return nextToken;
       }
-      return sourceCode.getLastToken(lastItem);
+      return context.getLastToken(lastItem);
     }
   }
 }
@@ -243,10 +216,10 @@ function inc(freqs, key) {
   freqs[key]++;
 }
 
-function maxKey(freqs) {
+function maxKey(freqs, defaultKey) {
   const keys = Object.keys(freqs);
   if (keys.length === 0) {
-    return null;
+    return defaultKey;
   }
 
   return keys.reduce(

@@ -1,22 +1,10 @@
 "use strict";
 
-const { findVariable, getKey, isGlobal, whiteRegex } = require("../lib/common");
-let reqs;
+const { whiteRegex } = require("../lib/common");
 
-exports.reset = function() {
-  reqs = [];
-};
+exports.init = function(context) {
+  const reqs = [];
 
-exports.retrieve = function() {
-  return reqs;
-};
-
-exports.create = function(context) {
-  const sourceCode = context.getSourceCode();
-  const sourceByLine = sourceCode.lines.slice(0);
-  sourceByLine.unshift("");
-
-  const allReqs = [];
   return {
     VariableDeclaration(node) {
       const { loc: { start, end } } = node;
@@ -27,8 +15,8 @@ exports.create = function(context) {
       if (
         node.declarations.length !== 1 ||
         node.parent.type !== "Program" ||
-        !whiteRegex.test(sourceByLine[start.line].slice(0, start.column)) ||
-        !whiteRegex.test(sourceByLine[end.line].slice(end.column + 1))
+        !whiteRegex.test(context.getLine(start.line).slice(0, start.column)) ||
+        !whiteRegex.test(context.getLine(end.line).slice(end.column + 1))
       ) {
         return;
       }
@@ -42,7 +30,7 @@ exports.create = function(context) {
       if (
         init &&
         init.type === "MemberExpression" &&
-        getKey(init.property) === "default"
+        context.getKey(init.property) === "default"
       ) {
         isDefault = true;
         call = init.object;
@@ -51,7 +39,7 @@ exports.create = function(context) {
       if (
         !call ||
         call.type !== "CallExpression" ||
-        !isGlobal(context, call.callee, "require") ||
+        !context.isGlobal(call.callee, "require") ||
         call.arguments.length !== 1 ||
         call.arguments[0].type !== "Literal" ||
         typeof call.arguments[0].value !== "string"
@@ -62,17 +50,19 @@ exports.create = function(context) {
       const depID = call.arguments[0].value;
       if (id.type === "Identifier") {
         const varsKey = isDefault ? "defaultVars" : "identVars";
-        allReqs.push({ node, depID, [varsKey]: [findVariable(context, id)] });
+        reqs.push({ node, depID, [varsKey]: [context.findVariable(id)] });
       } else if (
         id.type === "ObjectPattern" &&
         id.properties.every(
-          p => p.value.type === "Identifier" && getKey(p.key) === p.value.name
+          p =>
+            p.value.type === "Identifier" &&
+              context.getKey(p.key) === p.value.name
         ) &&
         // we don't support destructuring the default
         !isDefault
       ) {
-        const propVars = id.properties.map(p => findVariable(context, p.value));
-        allReqs.push({ node, depID, propVars });
+        const propVars = id.properties.map(p => context.findVariable(p.value));
+        reqs.push({ node, depID, propVars });
       }
     },
 
@@ -90,30 +80,34 @@ exports.create = function(context) {
       node.specifiers.forEach(s => {
         switch (s.type) {
           case "ImportSpecifier":
-            if (s.imported === s.local) {
-              req.propVars.push(findVariable(context, s.local));
+            if (
+              s.imported.name === s.local.name &&
+              s.imported.start === s.local.start &&
+              s.imported.end === s.local.end
+            ) {
+              req.propVars.push(context.findVariable(s.local));
             } else {
               valid = false;
             }
             break;
 
           case "ImportDefaultSpecifier":
-            req.defaultVars.push(findVariable(context, s.local));
+            req.defaultVars.push(context.findVariable(s.local));
             break;
 
           case "ImportNamespaceSpecifier":
-            req.identVars.push(findVariable(context, s.local));
+            req.identVars.push(context.findVariable(s.local));
             break;
         }
       });
 
       if (valid) {
-        allReqs.push(req);
+        reqs.push(req);
       }
     },
 
-    "Program:exit"() {
-      reqs = allReqs.map((
+    finish() {
+      context.reqs = reqs.map((
         { node, depID, identVars, defaultVars, propVars }
       ) => ({
         node,
@@ -130,7 +124,7 @@ exports.create = function(context) {
 function getUsedNames(vars) {
   return vars
     .filter(v => {
-      return v.eslintUsed ||
+      return v.used ||
         v.references.some(r => v.defs.every(d => d.name !== r.identifier));
     })
     .map(v => v.name);

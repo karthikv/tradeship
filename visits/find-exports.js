@@ -1,24 +1,16 @@
 /* eslint no-console: ["error", { allow: ["error"] }] */
 "use strict";
 
-const { findVariable, getKey, isGlobal } = require("../lib/common");
-
-let exported = {};
-exports.reset = function() {
-  exported = {
+exports.init = function(context) {
+  context.exported = {
     idents: new Set(),
     defaults: new Set(),
     props: new Set(),
     hasExports: false,
     hasDefaults: false
   };
-};
+  const { exported } = context;
 
-exports.retrieve = function() {
-  return exported;
-};
-
-exports.create = function(context) {
   return {
     AssignmentExpression(node) {
       if (node.left.type === "MemberExpression") {
@@ -26,29 +18,30 @@ exports.create = function(context) {
         const right = node.right;
 
         if (
-          isGlobal(context, object, "module") && getKey(property) === "exports"
+          context.isGlobal(object, "module") &&
+          context.getKey(property) === "exports"
         ) {
-          addIdents(parseNames(right));
+          addIdents(exported, parseNames(right));
           parsePropsDefaults(context, right);
 
           let parent = node.parent;
           while (parent.type === "AssignmentExpression") {
-            addIdents(parseNames(parent.left));
+            addIdents(exported, parseNames(parent.left));
             parent = parent.parent;
           }
         }
 
         if (
           object.type === "MemberExpression" &&
-            isGlobal(context, object.object, "module") &&
-            getKey(object.property) === "exports" ||
-          isGlobal(context, object, "exports")
+            context.isGlobal(object.object, "module") &&
+            context.getKey(object.property) === "exports" ||
+          context.isGlobal(object, "exports")
         ) {
-          const key = getKey(property);
+          const key = context.getKey(property);
           if (key === "default") {
-            addDefaults(parseNames(right));
+            addDefaults(exported, parseNames(right));
           } else {
-            addProps([key]);
+            addProps(exported, [key]);
           }
         }
       }
@@ -56,7 +49,7 @@ exports.create = function(context) {
 
     Identifier(node) {
       if (
-        isGlobal(context, node, "module") || isGlobal(context, node, "exports")
+        context.isGlobal(node, "module") || context.isGlobal(node, "exports")
       ) {
         exported.hasExports = true;
       }
@@ -64,21 +57,21 @@ exports.create = function(context) {
 
     ExportNamedDeclaration(node) {
       if (node.declaration) {
-        addProps(parseNames(node.declaration));
+        addProps(exported, parseNames(node.declaration));
       }
       if (node.specifiers) {
         node.specifiers.forEach(s => {
           if (s.exported.name === "default") {
-            addDefaults([s.local.name]);
+            addDefaults(exported, [s.local.name]);
           } else {
-            addProps([s.exported.name]);
+            addProps(exported, [s.exported.name]);
           }
         });
       }
     },
 
     ExportDefaultDeclaration(node) {
-      addDefaults(parseNames(node.declaration));
+      addDefaults(exported, parseNames(node.declaration));
     },
 
     ExportAllDeclaration() {
@@ -127,18 +120,20 @@ function parseNames(node) {
 }
 
 function parsePropsDefaults(context, node) {
+  const { exported } = context;
+
   if (node.type === "ObjectExpression") {
     node.properties.forEach(p => {
       if (p.key.type === "Identifier") {
         if (p.key.name === "default") {
-          addDefaults(parseNames(p.value));
+          addDefaults(exported, parseNames(p.value));
         } else {
-          addProps([p.key.name]);
+          addProps(exported, [p.key.name]);
         }
       }
     });
   } else if (node.type === "Identifier") {
-    const variable = findVariable(context, node);
+    const variable = context.findVariable(node);
 
     if (variable) {
       let lastWriteIndex = 0;
@@ -161,11 +156,11 @@ function parsePropsDefaults(context, node) {
             ident.parent.parent.type === "AssignmentExpression" &&
             ident.parent.parent.left === ident.parent
           ) {
-            const key = getKey(ident.parent.property);
+            const key = context.getKey(ident.parent.property);
             if (key === "default") {
-              addDefaults(parseNames(ident.parent.right));
+              addDefaults(exported, parseNames(ident.parent.right));
             } else {
-              addProps([key]);
+              addProps(exported, [key]);
             }
           }
         }
@@ -174,17 +169,17 @@ function parsePropsDefaults(context, node) {
   }
 }
 
-function addIdents(idents) {
+function addIdents(exported, idents) {
   exported.hasExports = true;
   idents.forEach(i => exported.idents.add(i));
 }
 
-function addProps(props) {
+function addProps(exported, props) {
   exported.hasExports = true;
   props.forEach(p => exported.props.add(p));
 }
 
-function addDefaults(defaults) {
+function addDefaults(exported, defaults) {
   exported.hasExports = true;
   exported.hasDefaults = true;
   defaults.forEach(d => exported.defaults.add(d));
