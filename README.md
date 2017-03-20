@@ -4,10 +4,10 @@
 [![Windows Build][appveyor-image]][appveyor-url]
 [![NPM Version][npm-image]][npm-url]
 
-tradeship statically analyzes your code for identifiers that aren't defined and
-finds the appropriate dependencies to import. It also removes imports that
-aren't used. tradeship is meant to be used as an editor plugin that manages your
-imports.
+tradeship statically analyzes your JavaScript code for identifiers that aren't
+defined and finds the appropriate dependencies to import. It also removes
+imports that aren't used. tradeship is meant to be used as an editor plugin that
+manages your imports.
 
 ![tradeship](http://g.recordit.co/OlDKhJc9LI.gif)
 
