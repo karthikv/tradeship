@@ -55,13 +55,13 @@ run it once on the command-line, as shown below, so you can see the progress as
 it populates the cache:
 
 ```sh
-tradeship [path/to/file.js]
+tradeship [path]
 ```
 
-Replace `[path/to/file.js]` with any path to a JavaScript file in your project
-directory. Note that this won't modify the file in any way; it'll just print
-the new code to stdout. See the [Command Line
-Interface](#command-line-interface) section for details.
+Replace `[path]` with any path to a JavaScript file in your project directory.
+Note that this won't modify the file in any way; it'll just print the new code
+to stdout. See the [Command Line Interface](#command-line-interface-cli) section
+for details.
 
 ## Configuration
 tradeship doesn't need any configuration to work out of the box. By design,
@@ -152,10 +152,9 @@ tradeship exposes a simple node.js API if you'd like to use it programatically:
 
 ```js
 const tradeship = require("tradeship");
-tradeship.import(dir, code)
-  .then(newCode => {
-    // do something with newCode
-  });
+tradeship.import(dir, code).then(newCode => {
+  // do something with newCode
+});
 ```
 
 `dir` is the directory used to resolve relative imports and find available npm
@@ -164,7 +163,7 @@ actual JavaScript code. `tradeship.import()` returns a promise that, when
 resolved, gives the resulting new code.
 
 ## How it works
-`tradeship` analyzes dependencies from three sources: Node.js standard
+`tradeship` analyzes dependencies from three sources: node.js standard
 libraries, package.json dependencies, and other files within your project
 directory.
 
