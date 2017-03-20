@@ -1,4 +1,4 @@
-![tradeship](logo.png)
+[![tradeship][logo-image]][tradeship-url]
 
 [![Linux Build][travis-image]][travis-url]
 [![Windows Build][appveyor-image]][appveyor-url]
@@ -227,8 +227,10 @@ also sorted lexicographically.
 tradeship finds all imports that aren't used and removes them.
 
 ## License
-[MIT](LICENSE.md)
+[MIT](https://github.com/karthikv/tradeship/blob/master/LICENSE.md)
 
+[tradeship-url]: https://github.com/karthikv/tradeship
+[logo-image]: https://raw.githubusercontent.com/karthikv/tradeship/master/logo.png
 [travis-image]: https://img.shields.io/travis/karthikv/tradeship/master.svg?label=linux
 [travis-url]: https://travis-ci.org/karthikv/tradeship
 [appveyor-image]: https://img.shields.io/appveyor/ci/karthikv/tradeship/master.svg?label=windows
