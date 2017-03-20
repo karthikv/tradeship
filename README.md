@@ -229,6 +229,8 @@ tradeship finds all imports that aren't used and removes them.
 ## License
 [MIT](https://github.com/karthikv/tradeship/blob/master/LICENSE.md)
 
+ship vector icon by [Vecteezy](https://www.vecteezy.com/)
+
 [tradeship-url]: https://github.com/karthikv/tradeship
 [logo-image]: https://raw.githubusercontent.com/karthikv/tradeship/master/logo.png
 [travis-image]: https://img.shields.io/travis/karthikv/tradeship/master.svg?label=linux
