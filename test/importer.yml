@@ -289,10 +289,20 @@
   node: false
   input: |
     const React = require("react");
-    <p>Paragraph</p>;
+
+    class Paragraph extends React.Component {
+      render() {
+        return <p>Paragraph</p>;
+      }
+    }
   expected: |
     const React = require("react");
-    <p>Paragraph</p>;
+
+    class Paragraph extends React.Component {
+      render() {
+        return <p>Paragraph</p>;
+      }
+    }
 
 - name: keep-jsx-ident
   node: false

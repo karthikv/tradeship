@@ -5,7 +5,7 @@ const tagNameRegex = /^[a-z]|\-/;
 exports.init = function(context) {
   return {
     JSXOpeningElement(node) {
-      const react = context.findVariable("react");
+      const react = context.findVariable("React");
       if (react) {
         react.used = true;
       } else {
