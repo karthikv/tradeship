@@ -366,6 +366,26 @@
   expected: |
     let x
 
+- name: keep-pkg-path
+  node: false
+  input: |
+    const stub = require("babylon/some/nested/file");
+    console.log(stub);
+  expected: |
+    const stub = require("babylon/some/nested/file");
+    console.log(stub);
+
+- name: keep-pkg-path-jsx
+  node: false
+  input: |
+    const Stub = require("babylon/some/nested/file");
+    const React = require("react");
+    <Stub />;
+  expected: |
+    const Stub = require("babylon/some/nested/file");
+    const React = require("react");
+    <Stub />;
+
 - name: multi-ident
   node: true
   input: |
@@ -646,15 +666,6 @@
     const JsonFile = require("@exponent/json-file");
 
     new JsonFile();
-
-- name: pkg-path
-  node: false
-  input: |
-    const stub = require("babylon/stub");
-    console.log(stub);
-  expected: |
-    const stub = require("babylon/stub");
-    console.log(stub);
 
 - name: order
   node: false
