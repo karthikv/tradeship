@@ -16,6 +16,9 @@ manages your imports.
   package.json, and other files within your project directory.
 - Imports **properties** that are exported by dependencies using destructuring
   syntax (e.g. `const { readFile } = require("fs");`).
+- Knows aliases for dependencies (e.g. `$` for jQuery, `_` for
+  lodash/underscore, `test` for ava, etc.) by analyzing more than 100 GB of
+  public JS code on GitHub.
 - Automatically identifies the style of your code and makes the imports match
   (e.g. single vs. double quotes, semicolons vs. no semicolons, var vs. let vs.
   const, etc.)
