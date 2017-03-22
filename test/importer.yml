@@ -681,6 +681,15 @@
     findImports.retrieve();
     new JsonFile();
 
+- name: dock-ident-map
+  node: false
+  input: |
+    yaml.safeLoad();
+  expected: |
+    const yaml = require("js-yaml");
+
+    yaml.safeLoad();
+
 - name: relative
   node: false
   input: |
