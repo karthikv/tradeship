@@ -213,11 +213,11 @@ corresponding dependency or property. If it finds a match, it adds the
 appropriate import to the code. If multiple dependencies or properties match
 a given import name, tradeship prioritizes them as follows:
 
-1. Project file depenedency (highest priority)
-1. package.json dependency
-1. Node.js standard library dependency
+1. Project file dependency (highest priority)
 1. Project file property
+1. package.json dependency
 1. package.json property
+1. Node.js standard library dependency
 1. Node.js standard library property (lowest priority)
 
 tradeship groups all node.js and package.json dependencies together, sorted
