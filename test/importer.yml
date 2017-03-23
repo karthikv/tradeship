@@ -390,11 +390,22 @@
   node: false
   input: |
     class X {
-      static react = 3
+      static babylon = 3
     }
   expected: |
     class X {
-      static react = 3
+      static babylon = 3
+    }
+
+- name: keep-typeof-undef
+  node: false
+  input: |
+    if (typeof babylon === "undefined") {
+      console.log("no babylon");
+    }
+  expected: |
+    if (typeof babylon === "undefined") {
+      console.log("no babylon");
     }
 
 - name: multi-ident
