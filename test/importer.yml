@@ -386,6 +386,17 @@
     const React = require("react");
     <Stub />;
 
+- name: keep-static
+  node: false
+  input: |
+    class X {
+      static react = 3
+    }
+  expected: |
+    class X {
+      static react = 3
+    }
+
 - name: multi-ident
   node: true
   input: |
