@@ -5,3 +5,4 @@ fixtures/
 test/
 yarn.lock
 logo.png
+appveyor.yml
