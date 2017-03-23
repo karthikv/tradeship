@@ -386,15 +386,15 @@
     const React = require("react");
     <Stub />;
 
-- name: keep-static
+- name: keep-class-property
   node: false
   input: |
-    class X {
-      static babylon = 3
+    class C {
+      static babylon = 3;
     }
   expected: |
-    class X {
-      static babylon = 3
+    class C {
+      static babylon = 3;
     }
 
 - name: keep-typeof-undef
@@ -491,6 +491,23 @@
     const crypto = require("crypto");
 
     crypto.randomBytes();
+
+- name: class-property
+  node: false
+  input: |
+    class C {
+      prop = () => {
+        babylon.parse();
+      };
+    }
+  expected: |
+    const babylon = require("babylon");
+
+    class C {
+      prop = () => {
+        babylon.parse();
+      };
+    }
 
 - name: prop
   node: false
