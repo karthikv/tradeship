@@ -1,5 +1,6 @@
 "use strict";
 
+const astHelpers = require("../lib/ast-helpers.js");
 const { whiteRegex } = require("../lib/common");
 
 exports.init = function(context) {
@@ -67,6 +68,10 @@ exports.init = function(context) {
     },
 
     ImportDeclaration(node) {
+      if (astHelpers.isFlowImport(node)) {
+        return;
+      }
+
       const depID = node.source.value;
       const req = {
         node,
@@ -83,7 +88,8 @@ exports.init = function(context) {
             if (
               s.imported.name === s.local.name &&
               s.imported.start === s.local.start &&
-              s.imported.end === s.local.end
+              s.imported.end === s.local.end &&
+              !astHelpers.isFlowImport(s)
             ) {
               req.propVars.push(context.findVariable(s.local));
             } else {

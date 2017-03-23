@@ -149,3 +149,22 @@
 
     export class I {}
   props: [a, b, c, d, e, f, g, h, I]
+
+- name: export-from
+  input: |
+    export {a, foo as b} from "mod";
+    export * from "other-mod";
+  props: [a, b]
+
+- name: export-extensions
+  input: |
+    export * as a, { b } from "mod";
+    export c from "other-mod";
+  props: [a, b]
+  defaults: [c]
+
+- name: ignore-export-type
+  input: |
+    export type foo = number;
+    export type { bar };
+    export type { baz } from "foobar";

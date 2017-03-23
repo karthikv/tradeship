@@ -1,6 +1,9 @@
 /* eslint no-console: ["error", { allow: ["error"] }] */
 "use strict";
 
+const astHelpers = require("../lib/ast-helpers.js");
+const { debug } = require("../lib/common.js");
+
 exports.init = function(context) {
   context.exported = {
     idents: new Set(),
@@ -56,6 +59,9 @@ exports.init = function(context) {
     },
 
     ExportNamedDeclaration(node) {
+      if (astHelpers.isFlowExport(node)) {
+        return;
+      }
       if (node.declaration) {
         addProps(exported, parseNames(node.declaration));
       }
@@ -63,6 +69,8 @@ exports.init = function(context) {
         node.specifiers.forEach(s => {
           if (s.exported.name === "default") {
             addDefaults(exported, [s.local.name]);
+          } else if (s.type === "ExportDefaultSpecifier") {
+            addDefaults(exported, [s.exported.name]);
           } else {
             addProps(exported, [s.exported.name]);
           }
@@ -114,7 +122,7 @@ function parseNames(node) {
       return [];
 
     default:
-      console.error(`Didn't consider parsing name from ${node.type}`);
+      debug("Didn't consider parsing name from %s", node.type);
       return [];
   }
 }

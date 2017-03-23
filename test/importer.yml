@@ -1,29 +1,4 @@
-- name: noop
-  node: false
-  input: |
-    console.log("This is a test");
-  expected: |
-    console.log("This is a test");
-
-- name: noop-local-variable
-  node: false
-  input: |
-    let fs = { readFile: () => {} };
-    fs.readFile();
-  expected: |
-    let fs = { readFile: () => {} };
-    fs.readFile();
-
-- name: noop-existing-require
-  node: false
-  input: |
-    const fs = require("fs");
-    fs.readFile();
-  expected: |
-    const fs = require("fs");
-    fs.readFile();
-
-- name: noop-empty
+- name: empty
   node: false
   input: ""
   expected: "\n"
@@ -210,8 +185,33 @@
     const es6 = require("../fixtures/es6.js").default;
   expected: "\n"
 
-- name: keep-rewrite
+- name: keep
   node: false
+  input: |
+    console.log("This is a test");
+  expected: |
+    console.log("This is a test");
+
+- name: keep-local-variable
+  node: true
+  input: |
+    let fs = { readFile: () => {} };
+    fs.readFile();
+  expected: |
+    let fs = { readFile: () => {} };
+    fs.readFile();
+
+- name: keep-existing-require
+  node: true
+  input: |
+    const fs = require("fs");
+    fs.readFile();
+  expected: |
+    const fs = require("fs");
+    fs.readFile();
+
+- name: keep-rewrite
+  node: true
   input: |
     let fs = require("fs");
     fs = {};
@@ -220,7 +220,7 @@
     fs = {};
 
 - name: keep-multiple-declarators
-  node: false
+  node: true
   input: |
     const fs = require("fs"), util = require("util");
 
@@ -231,7 +231,7 @@
     fs.readFile();
 
 - name: keep-same-line-code-before
-  node: false
+  node: true
   input: |
     const x = 3; const fs = require("fs");
     /* some comment */ const util = require("util");
@@ -240,13 +240,20 @@
     /* some comment */ const util = require("util");
 
 - name: keep-same-line-code-after
-  node: false
+  node: true
   input: |
     const fs = require("fs"); const x = 3;
     const util = require("util"); // some comment
   expected: |
     const fs = require("fs"); const x = 3;
     const util = require("util"); // some comment
+
+- name: keep-undeclared-assign
+  node: true
+  input: |
+    fs = {};
+  expected: |
+    fs = {};
 
 - name: keep-namespaced
   node: false
@@ -310,7 +317,7 @@
     <Component />;
 
 - name: keep-inner-scope
-  node: false
+  node: true
   input: |
     const util = require("util");
 
@@ -387,26 +394,44 @@
     <Stub />;
 
 - name: keep-class-property
-  node: false
+  node: true
   input: |
     class C {
-      static babylon = 3;
+      static fs = 3;
     }
   expected: |
     class C {
-      static babylon = 3;
+      static fs = 3;
     }
 
 - name: keep-typeof-undef
-  node: false
+  node: true
   input: |
-    if (typeof babylon === "undefined") {
-      console.log("no babylon");
+    if (typeof fs === "undefined") {
+      console.log("no fs");
     }
   expected: |
-    if (typeof babylon === "undefined") {
-      console.log("no babylon");
+    if (typeof fs === "undefined") {
+      console.log("no fs");
     }
+
+- name: keep-object-rest-spread
+  node: true
+  input: |
+    const { x, y, ...fs } = { x: 1, y: 2, z: 3 };
+    fs.readFile();
+  expected: |
+    const { x, y, ...fs } = { x: 1, y: 2, z: 3 };
+    fs.readFile();
+
+- name: keep-dynamic-import
+  node: true
+  input: |
+    const mod = "fs";
+    import(mod).then(fs => { fs.readFile() });
+  expected: |
+    const mod = "fs";
+    import(mod).then(fs => { fs.readFile() });
 
 - name: multi-ident
   node: true
@@ -493,21 +518,92 @@
     crypto.randomBytes();
 
 - name: class-property
-  node: false
+  node: true
   input: |
     class C {
       prop = () => {
-        babylon.parse();
+        fs.readFile();
       };
     }
   expected: |
-    const babylon = require("babylon");
+    const fs = require("fs");
 
     class C {
       prop = () => {
-        babylon.parse();
+        fs.readFile();
       };
     }
+
+- name: do-expressions
+  node: true
+  input: |
+    const result = do {
+      fs.readFile();
+    };
+  expected: |
+    const fs = require("fs");
+
+    const result = do {
+      fs.readFile();
+    };
+
+- name: async-generators
+  node: true
+  input: |
+    async function* foo() {
+      await fs.readFile();
+    }
+  expected: |
+    const fs = require("fs");
+
+    async function* foo() {
+      await fs.readFile();
+    }
+
+- name: function-bind
+  node: true
+  input: |
+    fs::readFile();
+  expected: |
+    const fs = require("fs");
+
+    const { readFile } = require("../lib/common.js");
+
+    fs::readFile();
+
+- name: decorators
+  node: true
+  input: |
+    @fs
+    class C {
+      @util
+      foo() {
+        http.createServer();
+      }
+    }
+
+    const foo = {
+      @babylon
+      bar() {}
+    };
+  expected: |
+    const babylon = require("babylon");
+    const fs = require("fs");
+    const http = require("http");
+    const util = require("util");
+
+    @fs
+    class C {
+      @util
+      foo() {
+        http.createServer();
+      }
+    }
+
+    const foo = {
+      @babylon
+      bar() {}
+    };
 
 - name: prop
   node: false
@@ -706,6 +802,15 @@
 
     new JsonFile();
 
+- name: pkg-dock
+  node: false
+  input: |
+    yaml.safeLoad();
+  expected: |
+    const yaml = require("js-yaml");
+
+    yaml.safeLoad();
+
 - name: order
   node: false
   input: |
@@ -730,15 +835,6 @@
     parser.run();
     findImports.retrieve();
     new JsonFile();
-
-- name: dock-ident-map
-  node: false
-  input: |
-    yaml.safeLoad();
-  expected: |
-    const yaml = require("js-yaml");
-
-    yaml.safeLoad();
 
 - name: relative
   node: false
@@ -895,3 +991,25 @@
 
     fs.readFile();
     new JsonFile();
+
+- name: ignore-flow
+  node: false
+  input: |
+    let x
+    (x:JsonFile)
+  expected: |
+    let x
+    (x:JsonFile)
+
+- name: ignore-import-type
+  node: false
+  input: |
+    import { a, type b } from 'foo';
+    import type { c, d } from 'bar';
+    import { typeof e } from 'baz';
+    import type * as f from 'foo-bar';
+  expected: |
+    import { a, type b } from 'foo';
+    import type { c, d } from 'bar';
+    import { typeof e } from 'baz';
+    import type * as f from 'foo-bar';
