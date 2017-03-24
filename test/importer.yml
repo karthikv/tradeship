@@ -925,7 +925,8 @@
     inherits();
   expected: |
     import * as fs from "fs";
-    import * as util, { inherits } from "util";
+    import { inherits } from "util";
+    import * as util from "util";
 
     fs.readFile();
     util.inspect();
