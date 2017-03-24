@@ -187,6 +187,11 @@ For each depedency it finds, tradeship:
   more import names (`childProcess` and `ChildProcess` for the `child_process`
   node.js standard library).
 
+  There are various package.json packages that are imported under common aliases
+  known by the community (e.g. `$` for jQuery, `_` for lodash/underscore, `test`
+  for ava, etc.). By analyzing more than 100 GB of public JS code on GitHub,
+  tradeship knows many such aliases, and will import the associated package.
+
   For project files, the code is statically analyzed to find an import name. For
   instance, if you write `module.exports = SomeExport;`, `SomeExport` will be an
   import name. This is one simple case; there are many others that tradeship
