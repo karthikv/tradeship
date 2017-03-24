@@ -10,7 +10,7 @@ exports.init = function(context) {
     defaults: new Set(),
     props: new Set(),
     hasExports: false,
-    hasDefaults: false
+    hasDefault: false
   };
   const { exported } = context;
 
@@ -42,7 +42,7 @@ exports.init = function(context) {
         ) {
           const key = context.getKey(property);
           if (key === "default") {
-            addDefaults(exported, parseNames(right));
+            addIdents(exported, parseNames(right), true);
           } else {
             addProps(exported, [key]);
           }
@@ -68,9 +68,9 @@ exports.init = function(context) {
       if (node.specifiers) {
         node.specifiers.forEach(s => {
           if (s.exported.name === "default") {
-            addDefaults(exported, [s.local.name]);
+            addIdents(exported, [s.local.name], true);
           } else if (s.type === "ExportDefaultSpecifier") {
-            addDefaults(exported, [s.exported.name]);
+            addIdents(exported, [s.exported.name], true);
           } else {
             addProps(exported, [s.exported.name]);
           }
@@ -79,7 +79,7 @@ exports.init = function(context) {
     },
 
     ExportDefaultDeclaration(node) {
-      addDefaults(exported, parseNames(node.declaration));
+      addIdents(exported, parseNames(node.declaration), true);
     },
 
     ExportAllDeclaration() {
@@ -134,7 +134,7 @@ function parsePropsDefaults(context, node) {
     node.properties.forEach(p => {
       if (p.key.type === "Identifier") {
         if (p.key.name === "default") {
-          addDefaults(exported, parseNames(p.value));
+          addIdents(exported, parseNames(p.value), true);
         } else {
           addProps(exported, [p.key.name]);
         }
@@ -166,7 +166,7 @@ function parsePropsDefaults(context, node) {
           ) {
             const key = context.getKey(ident.parent.property);
             if (key === "default") {
-              addDefaults(exported, parseNames(ident.parent.right));
+              addIdents(exported, parseNames(ident.parent.right), true);
             } else {
               addProps(exported, [key]);
             }
@@ -177,7 +177,10 @@ function parsePropsDefaults(context, node) {
   }
 }
 
-function addIdents(exported, idents) {
+function addIdents(exported, idents, hasDefault = false) {
+  if (hasDefault) {
+    exported.hasDefault = true;
+  }
   exported.hasExports = true;
   idents.forEach(i => exported.idents.add(i));
 }
@@ -185,10 +188,4 @@ function addIdents(exported, idents) {
 function addProps(exported, props) {
   exported.hasExports = true;
   props.forEach(p => exported.props.add(p));
-}
-
-function addDefaults(exported, defaults) {
-  exported.hasExports = true;
-  exported.hasDefaults = true;
-  defaults.forEach(d => exported.defaults.add(d));
 }

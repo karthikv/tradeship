@@ -108,33 +108,39 @@
     const x = 3
     exports.default = x
     module.exports.default = function foo() {}
-  defaults: [x, foo]
+  idents: [x, foo]
+  hasDefault: true
 
 - name: export-default
   input: |
     const x = 3;
     export default x;
-  defaults: [x]
+  idents: [x]
+  hasDefault: true
 
 - name: export-default-literal
   input: |
     export default "str";
+  hasDefault: true
 
 - name: export-default-fn
   input: |
     export default function foo() {}
-  defaults: [foo]
+  idents: [foo]
+  hasDefault: true
 
 - name: export-default-class
   input: |
     export default class Foo {}
-  defaults: [Foo]
+  idents: [Foo]
+  hasDefault: true
 
 - name: export-as-default
   input: |
     const x = 5
     export { x as default }
-  defaults: [x]
+  idents: [x]
+  hasDefault: true
 
 - name: export-named
   input: |
@@ -160,8 +166,9 @@
   input: |
     export * as a, { b } from "mod";
     export c from "other-mod";
+  idents: [c]
   props: [a, b]
-  defaults: [c]
+  hasDefault: true
 
 - name: ignore-export-type
   input: |
