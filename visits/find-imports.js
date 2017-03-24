@@ -8,16 +8,14 @@ exports.init = function(context) {
 
   return {
     VariableDeclaration(node) {
-      const { loc: { start, end } } = node;
-
       // For simplicity, we only process require()s we have added. All
       // require()s that we add are single variable declarations in the
       // top-most scope that occupy entire lines.
       if (
         node.declarations.length !== 1 ||
         node.parent.type !== "Program" ||
-        !whiteRegex.test(context.getLine(start.line).slice(0, start.column)) ||
-        !whiteRegex.test(context.getLine(end.line).slice(end.column + 1))
+        !context.startsLine(node) ||
+        !context.endsLine(node)
       ) {
         return;
       }

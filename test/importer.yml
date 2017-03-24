@@ -53,6 +53,29 @@
     var path = '/tmp/example.txt'
     fs.readFile(path)
 
+- name: prepend-use-strict
+  node: true
+  input: |
+    "use strict";
+    fs.readFile();
+  expected: |
+    "use strict";
+
+    const fs = require("fs");
+
+    fs.readFile();
+
+- name: prepend-use-strict-new-line
+  node: true
+  input: |
+    "use strict"; fs.readFile();
+  expected: |
+    "use strict";
+
+    const fs = require("fs");
+
+    fs.readFile();
+
 - name: append
   node: true
   input: |
@@ -244,9 +267,13 @@
   input: |
     const fs = require("fs"); const x = 3;
     const util = require("util"); // some comment
+    const http = require("http");;
+    ;const babylon = require("babylon");
   expected: |
     const fs = require("fs"); const x = 3;
     const util = require("util"); // some comment
+    const http = require("http");;
+    ;const babylon = require("babylon");
 
 - name: keep-undeclared-assign
   node: true
