@@ -120,7 +120,7 @@ codePromise
       const codeFrame = require("babel-code-frame");
       const { line, column } = err.loc;
 
-      const frame = codeFrame(code, line, column, { highlightCode: true });
+      const frame = codeFrame(code, line, column + 1, { highlightCode: true });
       console.error(`${err.message}\n${frame}`);
       process.exit(1);
     }
