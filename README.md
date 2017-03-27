@@ -14,8 +14,8 @@ manages your imports.
 ## Features
 - Imports dependencies from node.js standard libraries, npm packages listed in
   package.json, and other files within your project directory.
-- Imports **properties** that are exported by dependencies using destructuring
-  syntax (e.g. `const { readFile } = require("fs");`).
+- Infers properties that are exported by dependencies and imports them using
+  destructuring syntax (e.g. `const { Component } = require("react");`).
 - Knows aliases for dependencies (e.g. `$` for jQuery, `_` for
   lodash/underscore, `test` for ava, etc.) by analyzing more than 100 GB of
   public JS code on GitHub.
@@ -79,7 +79,7 @@ piggybacks on [eslint's configuration
 system](http://eslint.org/docs/user-guide/configuring) to avoid introducing
 another configuration file and format.
 
-In eslint, you specify the enviornments you want in your configuration file,
+In eslint, you specify the environments you want in your configuration file,
 generally at the root of your project directory. tradeship searches for an
 eslint configuration file (either `.eslintrc.js`, `.eslintrc.yaml`,
 `.eslintrc.yml`, `.eslintrc.json`, `.eslintrc`, or an `eslintConfig` object in
@@ -98,13 +98,14 @@ environments. An example configuration object is:
 ```
 
 Each key is an environment name, and the corresponding value is whether that
-enviornment is active. See eslint's guide to [specifying
+environment is active. See eslint's guide to [specifying
 environments](http://eslint.org/docs/user-guide/configuring#specifying-environments)
 for more details about the available environments.
 
-If there's no configuration file, `tradeship` assumes the environemnts
+If there's no configuration file, `tradeship` assumes the environments
 `browser`, `node`, and `es6`, bringing in globals from the browser (e.g.
-`window` and `document`), from node.js (e.g. `process` and `__dirname`), and from ES6 (e.g. `Set` and `Map`).
+`window` and `document`), from node.js (e.g. `process` and `__dirname`), and
+from ES6 (e.g. `Set` and `Map`).
 
 Note that tradeship makes all the node.js standard libraries available for
 import if and only if the `node` environment is active.
@@ -151,7 +152,7 @@ Arguments:
 ```
 
 ## Node.js Interface
-tradeship exposes a simple node.js API if you'd like to use it programatically:
+tradeship exposes a simple node.js API if you'd like to use it programmatically:
 
 ```js
 const tradeship = require("tradeship");
@@ -170,7 +171,7 @@ resolved, gives the resulting new code.
 libraries, package.json dependencies, and other files within your project
 directory.
 
-For each depedency it finds, tradeship:
+For each dependency it finds, tradeship:
 
 - **Determines potential import names**:
 
@@ -179,13 +180,13 @@ For each depedency it finds, tradeship:
   standard library. The import name `React` would refer to the `react` npm
   package.
 
-  For node.js standard libraries and package.json packages, if the library/package
-  name is itself a valid JavaScript identifier, it and its capitalized version are
-  potential import names (e.g. `react` and `React` for the `react` npm package).
-  If the library/package name has non-word characters or underscores, it is split
-  on `[\W_]+` and the parts are joined, both in camel and class case, to get two
-  more import names (`childProcess` and `ChildProcess` for the `child_process`
-  node.js standard library).
+  For node.js standard libraries and package.json packages, if the
+  library/package name is itself a valid JavaScript identifier, it and its
+  capitalized version are potential import names (e.g. `react` and `React` for
+  the `react` npm package).  If the library/package name has non-word characters
+  or underscores, it is split on `[\W_]+` and the parts are joined, both in
+  camel and class case, to get two more import names (`childProcess` and
+  `ChildProcess` for the `child_process` node.js standard library).
 
   There are various package.json packages that are imported under common aliases
   known by the community (e.g. `$` for jQuery, `_` for lodash/underscore, `test`
@@ -201,19 +202,19 @@ For each depedency it finds, tradeship:
 
 - **Determines properties**:
 
-  These are JavaScript object properties that are exported by the dependency. For
-  instance, `readFile` is a property of the `fs` node.js standard library.
+  These are JavaScript object properties that are exported by the dependency.
+  For instance, `readFile` is a property of the `fs` node.js standard library.
   `Component` is a property of the `react` npm package. The import name of
   properties is equivalent to the property name.
 
-  For node.js standard libraries and package.json packages, the library is loaded
-  within a separate node.js procss, and properties are extracted using
+  For node.js standard libraries and package.json packages, the library is
+  loaded within a separate node.js process, and properties are extracted using
   `Object.keys()`.
 
   For project files, the code is statically analyzed to find properties. For
   instance, if you write `exports.someProperty = ...;`, `someProperty` will be
-  a parsed property. This is one simple case; there are many otehrs that tradeship
-  parses, including those with ES6 `export` syntax.
+  a parsed property. This is one simple case; there are many others that
+  tradeship parses, including those with ES6 `export` syntax.
 
 Then, tradeship analyzes your code for identifiers that aren't defined. Each
 identifier is a potential import name, and tradeship searches for the
