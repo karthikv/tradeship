@@ -168,6 +168,15 @@
   expected: |
     const x = 3;
 
+- name: remove-line-after
+  node: false
+  input: |
+    const fs = require("fs");
+
+    console.log("Hello");
+  expected: |
+    console.log("Hello");
+
 - name: remove-multiple
   node: false
   input: |
