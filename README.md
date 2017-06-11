@@ -70,12 +70,12 @@ for details.
 tradeship doesn't need any configuration to work out of the box. By design,
 almost nothing is configurable, as tradeship automatically infers style from
 your code. There is, however, one configuration option that you may want to
-tweak: environments.
+tweak: globals.
 
 To correctly find identifiers that aren't defined, tradeship needs to know what
-global variables are available. It does this through environments, where each
-environment defines a set of global variables that come with it. tradeship
-piggybacks on [eslint's configuration
+global variables are available. It does this primarily through environments,
+where each environment defines a set of global variables that come with it.
+tradeship piggybacks on [eslint's configuration
 system](http://eslint.org/docs/user-guide/configuring) to avoid introducing
 another configuration file and format.
 
@@ -109,6 +109,21 @@ from ES6 (e.g. `Set` and `Map`).
 
 Note that tradeship makes all the node.js standard libraries available for
 import if and only if the `node` environment is active.
+
+In addition to environment-based globals, you can also specify any globals
+specific to your project or build process using the `globals` object. Each key
+is the name of a global, and the value is whether that global is writable
+(unused by tradeship, but used by eslint). For instance, the following registers
+`React` and `$` as globals, so tradeship won't attempt to import them:
+
+```js
+{
+  "globals": {
+    "React": false,
+    "$": false
+  }
+}
+```
 
 ## Command Line Interface (CLI)
 Using an editor plugin (see section above) is the easiest way to get started
