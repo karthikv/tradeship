@@ -46,6 +46,7 @@ Then, install the editor plugin of your choice:
 - Atom: [`tradeship-atom`](https://github.com/karthikv/tradeship-atom)
 - Sublime: [`tradeship-sublime`](https://github.com/karthikv/tradeship-sublime)
 - Emacs: [`tradeship-emacs`](https://github.com/karthikv/tradeship-emacs)
+- VS Code: [vscode-tradeship](https://marketplace.visualstudio.com/items?itemName=taichi.vscode-tradeship)
 
 Each editor plugin has instructions on how to run tradeship on the current file
 being edited. You can also configure each plugin to run tradeship on save. See
