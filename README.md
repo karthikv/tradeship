@@ -1,3 +1,8 @@
+# SHUTTING DOWN SOON: tradeship will shut down and no longer work as of August 31, 2026.
+The npm package has been deprecated accordingly.
+
+---
+
 [![tradeship][logo-image]][tradeship-url]
 
 [![Linux Build][travis-image]][travis-url]
