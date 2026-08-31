@@ -1,5 +1,6 @@
-# SHUTTING DOWN SOON: tradeship will shut down and no longer work as of August 31, 2026.
+# SHUT DOWN: as of August 31, 2026, tradeship is no longer an active project and does not work.
 The npm package has been deprecated accordingly.
+
 
 ---
 
